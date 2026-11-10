@@ -1,0 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../views/**/*.blade.php';
+
+@theme {
+    --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'DM Mono', ui-monospace, monospace;
+    --color-ink: #17211f;
+    --color-muted: #6d7974;
+    --color-line: #dce4df;
+    --color-paper: #f5f7f3;
+    --color-mint: #bce9d0;
+    --color-green: #175c4b;
+    --color-orange: #f2a45b;
+    --color-red: #b64242;
+}
+
+@layer base {
+    * { @apply box-border; }
+    body { @apply m-0 bg-paper font-sans text-ink; }
+    a { @apply text-inherit no-underline; }
+    h1 { @apply m-0 text-[clamp(34px,5vw,58px)] font-extrabold leading-none tracking-[-.065em]; }
+    h2 { @apply tracking-[-.04em]; }
+    input, select, textarea { @apply w-full rounded-sm border border-line bg-[#fbfcfa] p-[13px] font-sans text-[13px] text-ink; }
+    input:focus, select:focus, textarea:focus { @apply border-green outline-2 outline-mint; }
+}
+
+@layer components {
+    .topbar { @apply flex min-h-[76px] items-center justify-between border-b border-line bg-white/80 px-5 sm:px-[5vw] lg:px-[76px]; }
+    .brand { @apply flex items-center gap-[11px] text-[19px] font-extrabold tracking-[-.04em]; }
+    .brand small { @apply mt-0.5 block font-mono text-[8px] tracking-[.08em] text-muted; }
+    .brand-mark { @apply grid h-[34px] w-[34px] place-items-center rounded-full bg-green font-mono text-xl text-mint; }
+    .accent { @apply text-[#bb7440]; }
+    nav { @apply flex flex-wrap items-center gap-3 text-xs text-muted md:gap-[21px]; }
+    nav a:hover, .section-heading a, .form-foot a { @apply text-green; }
+    .user-chip { @apply border-l border-line pl-0 text-ink md:pl-5; }
+    .user-chip small { @apply block font-mono text-[9px] uppercase tracking-[.08em] text-muted; }
+    .link-button { @apply cursor-pointer border-0 bg-transparent p-0 font-sans text-muted; }
+    .shell { @apply mx-auto max-w-[1180px] px-[18px] pb-[60px] pt-[38px] sm:px-[25px] sm:pb-[90px] sm:pt-[58px]; }
+    .page-heading { @apply mb-9 flex flex-col items-start justify-between gap-5 md:flex-row md:items-end; }
+    .eyebrow, dt { @apply font-mono text-[10px] font-medium uppercase tracking-[.13em] text-[#a16a38]; }
+    .muted { @apply leading-relaxed text-muted; }
+    .button { @apply inline-flex cursor-pointer items-center justify-center gap-2.5 rounded-sm border-0 px-[19px] py-3.5 font-sans text-xs font-bold; }
+    .button.primary { @apply bg-green text-[#f4fff8] hover:bg-[#0f4539]; }
+    .button.small { @apply border border-line bg-paper px-[13px] py-2.5; }
+    .full { @apply w-full; }
+    .stat-grid { @apply mb-[38px] grid grid-cols-2 gap-3 lg:mb-[62px] lg:grid-cols-4; }
+    .stat { @apply min-h-[132px] border border-line bg-white p-[23px]; }
+    .stat.warm { @apply border-[#f0d7b6] bg-[#fff0dd]; }
+    .stat span { @apply font-mono text-[10px] tracking-[.08em] text-muted; }
+    .stat strong { @apply my-3 block text-[34px] font-extrabold tracking-[-.06em]; }
+    .stat small { @apply text-[11px] text-muted; }
+    .section-heading { @apply mb-3.5 flex items-center justify-between; }
+    .section-heading h2 { @apply m-0 text-xl; }
+    .section-heading a { @apply text-xs font-bold; }
+    .event-list, .pass-list { @apply border-t border-line; }
+    .event-row, .pass-row { @apply flex items-center gap-5 border-b border-line py-[17px]; }
+    .date-block { @apply w-[50px] shrink-0 text-center; }
+    .date-block b { @apply block text-[23px] tracking-[-.08em]; }
+    .date-block span { @apply font-mono text-[10px] uppercase text-[#a16a38]; }
+    .event-info { @apply min-w-0 flex-1; }
+    .event-info p { @apply m-0 text-xs text-muted; }
+    .tag { @apply inline-block bg-mint px-2 py-1 font-mono text-[10px] uppercase tracking-[.06em] text-green; }
+    .event-count { @apply text-right font-mono text-[11px] text-muted max-md:hidden; }
+    .event-count b { @apply text-lg text-ink; }
+    .event-count span { @apply block; }
+    .event-grid { @apply grid grid-cols-1 gap-[15px] md:grid-cols-3; }
+    .event-card, .panel { @apply border border-line bg-white p-[25px]; }
+    .card-top { @apply flex items-center justify-between; }
+    .seats { @apply font-mono text-[10px] text-muted; }
+    .event-card h2 { @apply my-2.5 mt-7 text-[23px]; }
+    .event-card p { @apply min-h-[59px] text-xs; }
+    dl { @apply my-[23px] grid grid-cols-2 gap-4 border-t border-line pt-4; }
+    dt { @apply mb-1 text-[9px]; }
+    dd { @apply m-0 text-xs leading-normal; }
+    dl div:last-child { @apply col-span-2; }
+    .auth-card { @apply mx-auto my-[4vh] max-w-[470px] border border-line bg-white p-[30px] sm:p-12; }
+    .auth-card.wide { @apply max-w-[700px]; }
+    .auth-card h1 { @apply text-[42px]; }
+    .form-stack, .form-grid { @apply mt-[30px] grid gap-[17px]; }
+    .form-grid { @apply grid-cols-1 md:grid-cols-2; }
+    label { @apply grid gap-1.5 text-[11px] font-bold text-muted; }
+    .check { @apply flex items-center gap-2 font-normal; }
+    .check input { @apply w-auto; }
+    .optional { @apply font-normal text-[#aab3ae]; }
+    .form-foot { @apply my-[26px] text-center text-xs text-muted; }
+    .span-2 { @apply md:col-span-2; }
+    .notice { @apply mb-[25px] border p-[13px_17px] text-xs; }
+    .notice.success, .scan-result.good { @apply border-[#add9ba] bg-[#e2f5e9] text-green; }
+    .notice.error, .scan-result.bad { @apply border-[#edb8b8] bg-[#ffebeb] text-red; }
+    .scan-result { @apply mb-4 border p-5 font-bold; }
+    .scan-result.warn { @apply border-[#ecd0a0] bg-[#fff3dc] text-[#956020]; }
+    .check-grid { @apply grid grid-cols-1 gap-[17px] md:grid-cols-2; }
+    .scanner-form { @apply grid gap-[18px]; }
+    .live-panel { @apply min-h-[220px]; }
+    .live-row { @apply flex justify-between border-b border-line py-[18px] text-[13px]; }
+    .live-row strong { @apply text-2xl; }
+    .tiny { @apply text-[11px]; }
+    .pass-row { @apply justify-between; }
+    .pass-row strong, .pass-row small { @apply block; }
+    .pass-row small { @apply mt-1 font-mono text-[10px] text-muted; }
+    .empty { @apply p-[25px_0] text-[13px] text-muted; }
+    .search-bar { @apply mb-[25px] mt-[-10px] flex flex-wrap gap-2.5; }
+    .search-bar input { @apply flex-1 max-md:basis-full; }
+    .event-preview { @apply my-[22px] flex justify-between gap-3 border-t border-line py-[15px] font-mono text-[11px] text-muted; }
+    .back-link { @apply mb-[22px] inline-block text-xs font-bold text-green; }
+    .detail-layout, .account-layout { @apply grid grid-cols-1 gap-[17px] md:grid-cols-[1.4fr_.8fr]; }
+    .event-detail h1 { @apply mt-[15px]; }
+    .lead { @apply max-w-[650px] leading-loose text-muted; }
+    .event-detail dl { @apply mt-10; }
+    .payment-panel h2 { @apply mb-1 mt-3; }
+    .notification-link { @apply inline-flex items-center gap-1.5; }
+    .notification-dot { @apply grid min-w-[17px] place-items-center rounded-full bg-orange px-1 text-[10px] font-mono text-ink; }
+    .notification-panel { @apply max-w-[760px]; }
+    .notification-row { @apply border-t border-line py-3.5 first:border-t-0; }
+    .notification-row strong, .notification-row p, .notification-row small { @apply block; }
+    .notification-row p { @apply my-1 text-xs text-muted; }
+    .notification-row small { @apply font-mono text-[10px] text-muted; }
+    .registration-actions { @apply flex items-center gap-2.5; }
+    .finished-tag { @apply bg-[#e5e9e6] text-muted; }
+    .calendar-tabs { @apply mb-[18px] flex gap-1 border-b border-line; }
+    .calendar-tabs a { @apply px-4 py-2.5 text-xs font-bold text-muted; }
+    .calendar-tabs a.active { @apply border-b-2 border-green text-green; }
+    .calendar-range { @apply mb-3.5 font-mono text-[11px] text-muted; }
+    .calendar-weekdays { @apply grid grid-cols-7 bg-green font-mono text-[10px] uppercase tracking-[.08em] text-[#f4fff8]; }
+    .calendar-weekdays > div { @apply border-r border-white/20 p-2.5; }
+    .calendar-week-grid, .calendar-month-grid { @apply grid grid-cols-7 border-l border-line; }
+    .calendar-day-cell { @apply min-h-[130px] border-b border-r border-line bg-white p-2; }
+    .calendar-week-grid .calendar-day-cell { @apply min-h-[270px]; }
+    .calendar-day-cell.outside { @apply bg-[#eef1ed]; }
+    .calendar-day-number { @apply mb-2 block font-mono text-[11px] text-muted; }
+    .calendar-event-chip { @apply my-1 block bg-mint px-1.5 py-1.5 text-[10px] leading-tight text-green hover:bg-[#92d4b1]; }
+    .calendar-event-chip strong { @apply mb-0.5 block font-mono text-[9px]; }
+    .calendar-year { @apply grid grid-cols-1 gap-4 md:grid-cols-3; }
+    .mini-month { @apply border border-line bg-white p-4; }
+    .mini-month h2 { @apply mb-3 text-base; }
+    .mini-weekdays, .mini-month-grid { @apply grid grid-cols-7 gap-1 text-center; }
+    .mini-weekdays { @apply font-mono text-[9px] text-muted; }
+    .mini-month-grid { @apply mt-2 font-mono text-[10px]; }
+    .mini-month-grid span { @apply grid min-h-[22px] place-items-center; }
+    .mini-month-grid .has-event { @apply bg-mint font-bold text-green; }
+    .filter-buttons { @apply mb-[25px] mt-[-8px] flex gap-2; }
+    .filter-button { @apply border border-line bg-white px-4 py-2.5 text-xs font-bold text-muted hover:border-green hover:bg-green hover:text-[#f4fff8]; }
+    .filter-button.active { @apply border-green bg-green text-[#f4fff8]; }
+}
