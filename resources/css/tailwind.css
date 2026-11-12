@@ -88,7 +88,8 @@
     .optional { @apply font-normal text-[#aab3ae]; }
     .form-foot { @apply my-[26px] text-center text-xs text-muted; }
     .span-2 { @apply md:col-span-2; }
-    .notice { @apply mb-[25px] border p-[13px_17px] text-xs; }
+    .notice { @apply mb-[25px] flex items-center gap-3 border-l-4 p-[17px_19px] text-sm shadow-sm; animation: notice-enter 240ms ease-out both; }
+    .notice-icon { @apply grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/70 font-bold; }
     .notice.success, .scan-result.good { @apply border-[#add9ba] bg-[#e2f5e9] text-green; }
     .notice.error, .scan-result.bad { @apply border-[#edb8b8] bg-[#ffebeb] text-red; }
     .scan-result { @apply mb-4 border p-5 font-bold; }
@@ -112,6 +113,26 @@
     .lead { @apply max-w-[650px] leading-loose text-muted; }
     .event-detail dl { @apply mt-10; }
     .payment-panel h2 { @apply mb-1 mt-3; }
+    .operations-panel { @apply self-start; }
+    .operation-buttons { @apply mt-6 grid gap-2.5; }
+    .operation-button { @apply flex w-full items-center justify-between border border-line bg-paper p-4 text-left hover:border-green hover:bg-[#f0fbf4]; }
+    .operation-button strong, .operation-button small { @apply block; }
+    .operation-button small { @apply mt-1 text-[11px] font-normal text-muted; }
+    .operation-button b { @apply grid h-8 min-w-8 place-items-center rounded-full bg-mint px-2 font-mono text-sm text-green; }
+    .modal { @apply w-[min(92vw,620px)] border border-line bg-white p-0 text-ink shadow-2xl; }
+    .modal::backdrop { @apply bg-ink/40; }
+    .modal-header { @apply flex items-start justify-between border-b border-line p-6; }
+    .modal-header h2 { @apply mb-0 mt-2; }
+    .modal > .form-stack, .modal > .muted { @apply p-6; }
+    .modal-close { @apply cursor-pointer border-0 bg-transparent text-2xl leading-none text-muted hover:text-ink; }
+    .pending-toolbar { @apply flex items-center justify-between border-b border-line pb-3; }
+    .pending-list { @apply max-h-[280px] overflow-y-auto border-y border-line; }
+    .pending-item { @apply flex items-center justify-between gap-3 border-b border-line py-3 last:border-b-0; }
+    .pending-item .check { @apply min-w-0 flex-1; }
+    .pending-item strong, .pending-item small { @apply block truncate; }
+    .ticket-card { @apply mx-auto max-w-[700px]; }
+    .ticket-code { @apply my-7 border-2 border-dashed border-green bg-[#f0fbf4] p-7 text-center; }
+    .ticket-code strong { @apply my-3 block font-mono text-3xl tracking-[.08em] text-green; }
     .notification-link { @apply inline-flex items-center gap-1.5; }
     .notification-dot { @apply grid min-w-[17px] place-items-center rounded-full bg-orange px-1 text-[10px] font-mono text-ink; }
     .notification-panel { @apply max-w-[760px]; }
@@ -145,4 +166,9 @@
     .filter-buttons { @apply mb-[25px] mt-[-8px] flex gap-2; }
     .filter-button { @apply border border-line bg-white px-4 py-2.5 text-xs font-bold text-muted hover:border-green hover:bg-green hover:text-[#f4fff8]; }
     .filter-button.active { @apply border-green bg-green text-[#f4fff8]; }
+}
+
+@keyframes notice-enter {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
 }

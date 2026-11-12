@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -23,6 +24,11 @@ class User extends Authenticatable
         return $this->hasMany(Registration::class);
     }
 
+    public function assignedEvents(): BelongsToMany
+    {
+        return $this->belongsToMany(Event::class, 'event_staff')->withPivot('assigned_by')->withTimestamps();
+    }
+
     public function isManager(): bool
     {
         return in_array($this->role, ['admin', 'manager'], true);
@@ -31,6 +37,11 @@ class User extends Authenticatable
     public function isGateStaff(): bool
     {
         return $this->role === 'gate_staff';
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
     }
 
     /**

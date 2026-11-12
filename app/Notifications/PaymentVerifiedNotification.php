@@ -21,6 +21,7 @@ class PaymentVerifiedNotification extends Notification
             'title' => 'Payment verified',
             'message' => "Your payment for {$this->registration->event->name} has been verified.",
             'registration_id' => $this->registration->id,
+            'event_id' => $this->registration->event_id,
         ]);
     }
 }
