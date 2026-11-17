@@ -1,2 +1,15 @@
 User-agent: *
-Disallow:
+Disallow: /manage
+Disallow: /admin
+Disallow: /gate
+Disallow: /my
+Disallow: /speaker
+Disallow: /api
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Allow: /
+
+# After deployment add the full address, for example:
+# Sitemap: https://your-domain.example/sitemap.xml

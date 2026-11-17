@@ -16,10 +16,36 @@
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
+    RewriteRule ^ %1 [L,R=308,NE]
 
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# ---- GTAV-M additions: compression and browser caching (each block runs only if the Apache module is on) ----
+
+# Compress text responses (HTML, CSS, JS, JSON, XML, SVG, fonts).
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml application/xml application/json application/javascript text/javascript image/svg+xml font/woff application/font-woff
+</IfModule>
+
+# Cache static files. CSS and JS links carry ?v=N, so a new version is fetched as soon as it changes.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType text/javascript "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType application/font-woff "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/x-icon "access plus 1 month"
+</IfModule>
+
+# Never serve dotfiles such as .env or .git if they ever end up in the public folder.
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
