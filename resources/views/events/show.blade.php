@@ -1,103 +1,153 @@
 @extends('layouts.app')
+
+@section('title', $event->title)
+@section('description', Str::limit($event->typeLabel() . ' in ' . ($event->city ?: $event->venue) . ', ' . $event->starts_at->format('F j, Y') . '. ' . ($event->description ?? ''), 155))
+
+@if ($event->status === 'published')
+    @push('head')
+        <script type="application/ld+json">{!! $structuredData !!}</script>
+    @endpush
+@else
+    @section('noindex', '1')
+@endif
+
 @section('content')
-<a class="back-link" href="{{ route('events.index') }}">← Back to events</a>
-<div class="detail-layout">
-    <article class="panel event-detail">
-        <div class="eyebrow">{{ $event->type }} · {{ $event->chapter->name }}</div>
-        <h1>{{ $event->name }}</h1>
-        <p class="lead">{{ $event->description ?: 'A focused gathering for global trade professionals.' }}</p>
-        <dl>
-            <div><dt>WHEN</dt><dd>{{ $event->starts_at->format('M d, Y') }}<br>{{ $event->starts_at->format('g:i A') }} - {{ $event->ends_at->format('g:i A') }}</dd></div>
-            <div><dt>WHERE</dt><dd>{{ $event->venue }}<br>{{ $event->chapter->location }}</dd></div>
-            <div><dt>CAPACITY</dt><dd>{{ $event->seatsRemaining() }} seats remaining<br>of {{ $event->capacity }}</dd></div>
-            <div><dt>PRICE</dt><dd>₱{{ number_format($event->ticket_price, 2) }}</dd></div>
-        </dl>
-    </article>
-    @if(auth()->user()->role === 'attendee')
-        <aside class="panel payment-panel">
-            @if($registration)
-                <div class="eyebrow">REGISTRATION STATUS</div>
-                <h2>{{ $registration->payment_status === 'paid' ? 'Registered' : ($registration->payment_status === 'rejected' ? 'Rejected' : 'Awaiting verification') }}</h2>
-                <p class="muted">
-                    @if($registration->payment_status === 'paid')
-                        Your payment is verified and your ticket is ready.
-                    @elseif($registration->payment_status === 'rejected')
-                        Your registration was not approved. {{ $registration->rejection_reason ?: '' }}
-                    @else
-                        Your payment is waiting for the event team to verify.
-                    @endif
-                </p>
-            @else
-                <div class="eyebrow">SECURE YOUR SEAT</div>
-                <h2>Register for this event</h2>
-                <p class="muted">Choose how you will pay. The event team will verify your payment before your entry pass is released.</p>
-                <form method="POST" action="{{ route('events.register', $event) }}" class="form-stack">
-                    @csrf
-                    <label>Payment method
-                        <select name="payment_method" required>
-                            <option value="">Choose one</option>
-                            <option value="cash">Cash at the event office</option>
-                            <option value="gcash">GCash</option>
-                            <option value="bank_transfer">Bank transfer</option>
-                        </select>
-                    </label>
-                    <button class="button primary full">Register and submit payment method</button>
-                </form>
+    @php
+        $state = $event->registrationState();
+        $user = auth()->user();
+        $isRegistered = $registration && $registration->isConfirmed();
+    @endphp
+
+    <div class="page-head">
+        <div>
+            @include('partials.breadcrumbs', ['trail' => array_merge(
+                ['Events' => route('events.index')],
+                $event->parent ? [$event->parent->title => route('events.show', $event->parent)] : [],
+                [$event->title => null]
+            )])
+            <h1>{{ $event->title }}</h1>
+            <p class="muted small" style="margin-bottom:12px">{{ $event->chapter->name }}</p>
+            <span class="badge badge-type">{{ $event->typeLabel() }}</span>
+            <span class="badge badge-{{ $state }}">{{ $event->stateLabel() }}</span>
+            @if ($event->status !== 'published')
+                <span class="badge badge-{{ $event->status }}">{{ ucfirst($event->status) }} (not public)</span>
             @endif
-        </aside>
-    @elseif($canManageEvent)
-        <aside class="panel payment-panel operations-panel">
-            <div class="eyebrow">EVENT OPERATIONS</div>
-            <h2>Manage this event</h2>
-            <div class="operation-buttons">
-                <button class="operation-button button" type="button" data-modal-open="registrations-modal">
-                    <span><strong>Registrations</strong><small>Review pending attendees</small></span>
-                    <b>{{ $pendingRegistrations->count() }}</b>
-                </button>
-                <button class="operation-button button" type="button" data-modal-open="staff-modal">
-                    <span><strong>Assigned staff</strong><small>Choose gate staff</small></span>
-                    <b>{{ $assignedStaffIds->count() }}</b>
-                </button>
+        </div>
+        @can('manage-event', $event)
+            <a class="btn" href="{{ route('manage.events.show', $event) }}">Manage this event</a>
+        @endcan
+    </div>
+
+    <div class="split">
+        <div>
+            <div class="card">
+                <h2>About this event</h2>
+                <p>{!! nl2br(e($event->description ?: 'Details will be announced soon.')) !!}</p>
+
+                <dl class="facts">
+                    <dt>When</dt><dd>{{ $event->dateRange() }}</dd>
+                    <dt>Where</dt><dd>{{ $event->venue }}@if ($event->city), {{ $event->city }}@endif</dd>
+                    <dt>Registration window</dt>
+                    <dd>{{ $event->registration_opens_at->format('M j, Y') }} to {{ $event->registration_closes_at->format('M j, Y g:i A') }}</dd>
+                </dl>
+            </div>
+
+            @if ($event->speakers->isNotEmpty())
+                <div class="card">
+                    <h2>Speakers</h2>
+                    <ul class="plain">
+                        @foreach ($event->speakers as $speaker)
+                            <li>
+                                <div>
+                                    <strong>{{ $speaker->name }}</strong>
+                                    <div class="muted small">{{ $speaker->company }}</div>
+                                </div>
+                                <span class="muted small">{{ $speaker->pivot->topic }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            @if ($event->children->isNotEmpty())
+                <h2>Sessions inside this event</h2>
+                <p class="muted">Workshops have their own seat limits and need a separate registration.</p>
+                <div class="grid grid-2" style="margin-bottom:20px">
+                    @foreach ($event->children as $child)
+                        @include('partials.event-card', ['event' => $child->setRelation('chapter', $event->chapter)])
+                    @endforeach
+                </div>
+            @endif
+
+            <div class="card">
+                <h2>Materials</h2>
+                @if ($canAccessMaterials)
+                    @if ($materials->isEmpty())
+                        <p class="muted">Nothing has been uploaded yet.</p>
+                    @else
+                        <ul class="plain">
+                            @foreach ($materials as $material)
+                                <li>
+                                    <div>
+                                        <strong>{{ $material->title }}</strong>
+                                        <div class="muted small">{{ $material->original_name }} · {{ $material->sizeLabel() }}</div>
+                                    </div>
+                                    <a class="btn btn-sm" data-download href="{{ route('materials.download', $material) }}">Download</a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                @else
+                    <p class="muted">
+                        {{ $materialCount }} {{ Str::plural('file', $materialCount) }} available.
+                        Materials unlock once your registration for this event is confirmed.
+                    </p>
+                @endif
+            </div>
+        </div>
+
+        <aside>
+            <div class="card">
+                <div class="price" style="font-size:1.8rem">{{ $event->priceLabel() }}</div>
+                <p class="muted small">per attendee</p>
+
+                <div class="meter {{ $event->fillPercent() >= 85 ? 'hot' : '' }}"><span style="width: {{ $event->fillPercent() }}%"></span></div>
+                <p class="small" style="margin-top:6px">
+                    <strong>{{ number_format($event->seatsLeft()) }}</strong> of {{ number_format($event->capacity) }} seats left
+                </p>
+
+                @if ($isRegistered)
+                    <div class="flash flash-success" style="margin-bottom:12px">
+                        You are registered. Reference <strong class="mono">{{ $registration->reference_code }}</strong>
+                    </div>
+                    <a class="btn btn-primary" data-download href="{{ route('registrations.pass', $registration) }}">Download entry pass (PDF)</a>
+                    <p class="small" style="margin-top:10px"><a href="{{ route('registrations.index') }}">Go to my passes</a></p>
+                @elseif (! $user)
+                    @if ($state === 'open')
+                        <a class="btn btn-primary" href="{{ route('login') }}">Log in to register</a>
+                        <p class="small" style="margin-top:10px">No account yet? <a href="{{ route('register') }}">Create one</a></p>
+                    @else
+                        <button class="btn" disabled>{{ $event->stateLabel() }}</button>
+                    @endif
+                @elseif ($user->hasRole('attendee'))
+                    @if ($state === 'open')
+                        <form method="POST" action="{{ route('registrations.store', $event) }}">
+                            @csrf
+                            <button class="btn btn-primary" type="submit">Register for {{ $event->priceLabel() }}</button>
+                        </form>
+                        <p class="muted small" style="margin-top:10px">Registration closes {{ $event->registration_closes_at->format('M j, g:i A') }}.</p>
+                    @else
+                        <button class="btn" disabled>{{ $event->stateLabel() }}</button>
+                        @if ($state === 'not_open')
+                            <p class="muted small" style="margin-top:10px">Opens {{ $event->registration_opens_at->format('M j, Y g:i A') }}.</p>
+                        @elseif ($state === 'full')
+                            <p class="muted small" style="margin-top:10px">This event reached its maximum headcount.</p>
+                        @endif
+                    @endif
+                @else
+                    <p class="muted small">Registration is for attendee accounts. You are signed in as {{ $user->roleLabel() }}.</p>
+                @endif
             </div>
         </aside>
-        <dialog id="registrations-modal" class="modal">
-            <div class="modal-header"><div><div class="eyebrow">REGISTRATIONS</div><h2>{{ $pendingRegistrations->count() }} pending</h2></div><button class="modal-close" type="button" data-modal-close>×</button></div>
-            @if($pendingRegistrations->isNotEmpty())
-                <form id="bulk-reject-form" method="POST" action="{{ route('events.registrations.reject', $event) }}" class="form-stack">
-                    @csrf
-                    <div class="pending-toolbar"><label class="check"><input type="checkbox" data-select-all="pending-registration"> Select all</label><span class="muted tiny">Choose attendees to reject</span></div>
-                    <div class="pending-list">
-                        @foreach($pendingRegistrations as $pendingRegistration)
-                            <div class="pending-item">
-                                <label class="check"><input type="checkbox" form="bulk-reject-form" name="registration_ids[]" value="{{ $pendingRegistration->id }}" data-select-item="pending-registration"><span><strong>{{ $pendingRegistration->user->name }}</strong><small>{{ ucfirst($pendingRegistration->payment_method ?: 'payment method not provided') }}</small></span></label>
-                                <button class="button small" type="submit" formaction="{{ route('registrations.verify-payment', $pendingRegistration) }}" formmethod="POST">Mark paid</button>
-                            </div>
-                        @endforeach
-                    </div>
-                    <label>Rejection reason <span class="optional">optional</span><input name="rejection_reason" placeholder="Explain why the registration was rejected"></label>
-                    <button class="button small" type="submit">Reject selected</button>
-                </form>
-            @else
-                <p class="muted">No registrations are waiting for verification.</p>
-            @endif
-        </dialog>
-        <dialog id="staff-modal" class="modal">
-            <div class="modal-header"><div><div class="eyebrow">ASSIGNED STAFF</div><h2>Gate staff</h2></div><button class="modal-close" type="button" data-modal-close>×</button></div>
-            @if($staff->isNotEmpty())
-                <form method="POST" action="{{ route('events.staff.update', $event) }}" class="form-stack">
-                    @csrf
-                    @method('PUT')
-                    <div class="pending-list">
-                        @foreach($staff as $member)
-                            <label class="check pending-item"><span><strong>{{ $member->name }}</strong><small>{{ $member->email }}</small></span><input type="checkbox" name="staff_ids[]" value="{{ $member->id }}" @checked($assignedStaffIds->contains($member->id))></label>
-                        @endforeach
-                    </div>
-                    <button class="button primary" type="submit">Save staff assignments</button>
-                </form>
-            @else
-                <p class="muted">No gate staff accounts exist yet. Create one from the Staff page.</p>
-            @endif
-        </dialog>
-    @endif
-</div>
+    </div>
 @endsection

@@ -2,25 +2,36 @@
 
 namespace App\Models;
 
+use Database\Factories\RegistrationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Registration extends Model
 {
+    /** @use HasFactory<RegistrationFactory> */
     use HasFactory;
 
-    protected $fillable = ['event_id', 'user_id', 'ticket_code', 'payment_method', 'payment_status', 'paid_at', 'verified_by', 'rejected_at', 'rejected_by', 'rejection_reason', 'registered_at'];
+    public const CONFIRMED = 'confirmed';
+
+    public const CANCELLED = 'cancelled';
+
+    protected $fillable = [
+        'user_id', 'event_id', 'reference_code', 'qr_token', 'status',
+        'amount_paid', 'checked_in_at', 'cancelled_at',
+    ];
+
+    protected $hidden = ['qr_token'];
 
     protected function casts(): array
     {
-        return ['registered_at' => 'datetime', 'paid_at' => 'datetime', 'rejected_at' => 'datetime'];
-    }
-
-    public function event(): BelongsTo
-    {
-        return $this->belongsTo(Event::class);
+        return [
+            'checked_in_at' => 'datetime',
+            'cancelled_at' => 'datetime',
+            'amount_paid' => 'decimal:2',
+            'user_id' => 'integer',
+            'event_id' => 'integer',
+        ];
     }
 
     public function user(): BelongsTo
@@ -28,18 +39,25 @@ class Registration extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function attendance(): HasOne
+    public function event(): BelongsTo
     {
-        return $this->hasOne(Attendance::class);
+        return $this->belongsTo(Event::class);
     }
 
-    public function verifier(): BelongsTo
+    public function isConfirmed(): bool
     {
-        return $this->belongsTo(User::class, 'verified_by');
+        return $this->status === self::CONFIRMED;
     }
 
-    public function rejector(): BelongsTo
+    /** Attendees may cancel until the event starts, as long as they have not been admitted. */
+    public function canCancel(): bool
     {
-        return $this->belongsTo(User::class, 'rejected_by');
+        return $this->isConfirmed() && ! $this->checked_in_at && $this->event->starts_at->isFuture();
+    }
+
+    /** Certificates are issued only to people who were actually scanned in, once the event is over. */
+    public function canDownloadCertificate(): bool
+    {
+        return $this->isConfirmed() && $this->checked_in_at && $this->event->ends_at->isPast();
     }
 }

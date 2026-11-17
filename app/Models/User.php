@@ -2,58 +2,93 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'company', 'role'])]
-#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
+
+    public const ROLE_ADMIN = 'admin';
+
+    public const ROLE_MANAGER = 'chapter_manager';
+
+    public const ROLE_ATTENDEE = 'attendee';
+
+    public const ROLE_SPEAKER = 'speaker';
+
+    public const ROLE_GATE = 'gate_staff';
+
+    public const ROLES = [
+        self::ROLE_ADMIN => 'Global Event Administrator',
+        self::ROLE_MANAGER => 'Regional Chapter Manager',
+        self::ROLE_ATTENDEE => 'Corporate Attendee',
+        self::ROLE_SPEAKER => 'Guest Speaker',
+        self::ROLE_GATE => 'Venue Gate Staff',
+    ];
+
+    /** Roles that must belong to a chapter. */
+    public const CHAPTER_ROLES = [self::ROLE_MANAGER, self::ROLE_GATE];
+
+    protected $fillable = [
+        'name', 'email', 'password', 'role', 'company', 'job_title', 'phone', 'chapter_id',
+    ];
+
+    protected $hidden = ['password', 'remember_token'];
+
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'chapter_id' => 'integer',
+        ];
+    }
+
+    public function chapter(): BelongsTo
+    {
+        return $this->belongsTo(Chapter::class);
+    }
 
     public function registrations(): HasMany
     {
         return $this->hasMany(Registration::class);
     }
 
-    public function assignedEvents(): BelongsToMany
+    /** Events this user speaks at. */
+    public function sessions(): BelongsToMany
     {
-        return $this->belongsToMany(Event::class, 'event_staff')->withPivot('assigned_by')->withTimestamps();
+        return $this->belongsToMany(Event::class, 'event_speaker')->withPivot('topic')->withTimestamps();
     }
 
-    public function isManager(): bool
+    public function hasRole(string ...$roles): bool
     {
-        return in_array($this->role, ['admin', 'manager'], true);
-    }
-
-    public function isGateStaff(): bool
-    {
-        return $this->role === 'gate_staff';
+        return in_array($this->role, $roles, true);
     }
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->role === self::ROLE_ADMIN;
     }
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    public function roleLabel(): string
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return self::ROLES[$this->role] ?? ucfirst($this->role);
+    }
+
+    /** Name of the route each role lands on after logging in. */
+    public function homeRoute(): string
+    {
+        return match ($this->role) {
+            self::ROLE_ADMIN, self::ROLE_MANAGER => 'manage.dashboard',
+            self::ROLE_SPEAKER => 'speaker.sessions',
+            self::ROLE_GATE => 'gate.scanner',
+            default => 'registrations.index',
+        };
     }
 }
