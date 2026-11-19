@@ -494,3 +494,28 @@ ul.plain li:last-child { border-bottom: 0; }
 .error-page { max-width: 640px; text-align: center; padding-top: 72px; }
 .error-page .error-logo img { display: block; width: 260px; margin: 0 auto 36px; }
 .error-page .actions { justify-content: center; margin-top: 28px; }
+
+/* ---- Gate verdicts and activity (one line per ticket) ---- */
+.scan-result .verdict { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+.verdict-icon { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 2px solid currentColor; font-family: var(--body); font-size: 1.5rem; font-weight: 700; line-height: 1; letter-spacing: 0; }
+.scan-result .detail { margin-top: 8px; font-size: 1.02rem; }
+.activity-head { margin-top: 30px; }
+.activity-head h2 { margin-bottom: 4px; }
+.activity { list-style: none; margin: 14px 0 0; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--glass); }
+.activity-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--hairline); border-left: 3px solid transparent; }
+.activity-row:last-child { border-bottom: 0; }
+.activity-inside { border-left-color: var(--green); }
+.activity-refused { border-left-color: var(--red); }
+.activity-person { display: flex; flex-direction: column; min-width: 0; }
+.activity-person strong { color: var(--text); }
+.activity-person span { font-size: .82rem; color: var(--text-3); overflow-wrap: anywhere; }
+.activity-status { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; text-align: right; flex: none; }
+.activity-detail { font-size: .85rem; color: var(--text-2); }
+.activity-repeat { font-size: .75rem; color: var(--text-3); }
+.activity-empty { padding: 18px 20px; color: var(--text-3); }
+.badge-inside { background: var(--green-bg); color: var(--green); border-color: rgba(111, 207, 151, .28); }
+.badge-refused { background: var(--red-bg); color: var(--red); border-color: rgba(240, 138, 128, .3); }
+@media (max-width: 420px) {
+    .activity-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .activity-status { align-items: flex-start; text-align: left; }
+}

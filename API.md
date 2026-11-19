@@ -58,22 +58,29 @@ curl -X POST http://127.0.0.1:8000/api/v1/checkins/scan \
 {
   "authorized": true,
   "result": "admitted",
-  "message": "Entry authorized.",
+  "instruction": "LET IN",
+  "tone": "ok",
+  "message": "Valid ticket. Welcome them in.",
   "attendee": { "name": "Jordan Reyes", "company": "Reyes Freight Solutions" },
   "reference_code": "EX-7F3K9Q2M",
-  "checked_in_at": "2026-11-17T09:14:02+00:00",
+  "checked_in_at": "2026-11-17T09:14:02+08:00",
+  "activity": { "key": "ticket-42", "name": "Jordan Reyes", "status": "inside", "status_label": "Inside", "detail": "Entered 9:14 AM", "scans": 1, "repeat_note": null },
   "event": { "id": 13, "title": "Singapore Members Briefing", "capacity": 30, "confirmed": 14, "checked_in": 5, "remaining": 9 }
 }
 ```
+
+`instruction` is what a gate screen should show in large type: `LET IN`, `ALREADY INSIDE` or `DO NOT LET IN`.
+`message` explains it in one sentence (the entry time, or why the ticket is refused). `activity` summarizes every scan
+of this ticket so far, so a handheld can show one line per ticket instead of one per scan.
 
 Other outcomes use the same shape with `"authorized": false`:
 
 | `result` | HTTP | Meaning |
 | --- | --- | --- |
-| `duplicate` | 409 | Already checked in. `checked_in_at` holds the first entry time |
-| `invalid` | 404 | Code not recognized |
+| `duplicate` | 409 | Already inside. `checked_in_at` holds the first entry time; check ID before letting back in |
+| `invalid` | 404 | No ticket matches the code |
 | `wrong_event` | 422 | Valid pass, but for a different event |
-| `cancelled` | 422 | Registration was cancelled |
+| `cancelled` | 422 | The ticket was cancelled |
 
 Every scan, accepted or rejected, is written to the `check_ins` table.
 Gate staff can only scan events in their own chapter (`403` otherwise).

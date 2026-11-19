@@ -35,7 +35,7 @@
     {{-- Fonts are self-hosted: no third-party request, and the two main faces start loading at once. --}}
     <link rel="preload" href="{{ asset('fonts/inter-latin.woff') }}" as="font" type="font/woff" crossorigin>
     <link rel="preload" href="{{ asset('fonts/cormorant-garamond-latin.woff') }}" as="font" type="font/woff" crossorigin>
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v=4">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v=5">
     <script src="{{ asset('js/app.js') }}?v=4" defer></script>
     @stack('head')
 </head>

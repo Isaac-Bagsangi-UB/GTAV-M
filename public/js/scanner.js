@@ -15,16 +15,15 @@
     var recent = document.getElementById('recent');
     var note = document.getElementById('camera-note');
     var matches = document.getElementById('matches');
-    var verdicts = {
-        admitted: ['ok', 'ADMIT'],
-        duplicate: ['warn', 'ALREADY IN'],
-        invalid: ['bad', 'STOP'],
-        wrong_event: ['bad', 'WRONG EVENT'],
-        cancelled: ['bad', 'CANCELLED'],
-    };
+    var icons = { ok: '\u2713', warn: '!', bad: '\u00D7' };
     var busy = false;
     var lastCode = null;
     var lastTime = 0;
+    var holdUntil = 0;
+    /** The camera reads a held-up code many times a second: the same ticket is ignored for this long. */
+    var SAME_CODE_PAUSE = 10000;
+    /** After any camera result, new reads wait this long so staff can read the screen. */
+    var RESULT_HOLD = 2500;
 
     function el(tag, className, text) {
         var node = document.createElement(tag);
@@ -37,33 +36,48 @@
         return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     }
 
-    function show(kind, verdict, who, message) {
-        result.className = 'scan-result ' + kind;
-        result.replaceChildren(el('div', 'verdict', verdict));
+    function show(tone, instruction, who, message) {
+        result.className = 'scan-result ' + tone;
+        var verdict = el('div', 'verdict');
+        if (icons[tone]) verdict.appendChild(el('span', 'verdict-icon', icons[tone]));
+        verdict.appendChild(document.createTextNode(instruction));
+        result.replaceChildren(verdict);
         if (who) result.appendChild(el('div', 'who', who));
-        if (message) result.appendChild(el('div', '', message));
+        if (message) result.appendChild(el('div', 'detail', message));
     }
 
-    function addRecent(data) {
+    /** One line per ticket: a repeat scan updates that ticket's line and moves it to the top. */
+    function updateActivity(row) {
         var empty = document.getElementById('recent-empty');
         if (empty) empty.remove();
-        var row = el('tr');
-        row.appendChild(el('td', 'nowrap', clock(new Date())));
-        row.appendChild(el('td', '', data.attendee ? data.attendee.name : 'Unknown pass'));
-        var cell = el('td', 'right');
-        cell.appendChild(el('span', 'badge badge-' + data.result, data.result.replace('_', ' ')));
-        row.appendChild(cell);
-        recent.prepend(row);
+
+        var item = el('li', 'activity-row activity-' + row.status);
+        item.dataset.key = row.key;
+        var person = el('div', 'activity-person');
+        person.appendChild(el('strong', '', row.name));
+        if (row.company) person.appendChild(el('span', '', row.company));
+        var status = el('div', 'activity-status');
+        status.appendChild(el('span', 'badge badge-' + row.status, row.status_label));
+        status.appendChild(el('span', 'activity-detail', row.detail));
+        if (row.repeat_note) status.appendChild(el('span', 'activity-repeat', row.repeat_note));
+        item.appendChild(person);
+        item.appendChild(status);
+
+        var existing = recent.querySelector('[data-key="' + row.key + '"]');
+        if (existing) existing.remove();
+        recent.prepend(item);
         while (recent.children.length > 8) recent.lastElementChild.remove();
     }
 
-    function check(code) {
+    function check(code, fromCamera) {
         code = (code || '').trim();
         if (!code || busy) return;
 
-        // Ignore the same code being read again while it is still in front of the camera.
         var now = Date.now();
-        if (code === lastCode && now - lastTime < 4000) return;
+        if (fromCamera) {
+            if (now < holdUntil) return;
+            if (code === lastCode && now - lastTime < SAME_CODE_PAUSE) return;
+        }
         lastCode = code;
         lastTime = now;
         busy = true;
@@ -79,15 +93,15 @@
             .then(function (res) {
                 var data = res.data;
                 if (!res.ok || !data.result) {
-                    show('bad', 'ERROR', null, data.message || 'The scan could not be checked. Try again.');
+                    show('bad', 'NOT CHECKED', null, data.message || 'The ticket could not be checked. Scan it again.');
                     return;
                 }
-                var verdict = verdicts[data.result] || ['bad', 'STOP'];
                 var who = data.attendee
                     ? data.attendee.name + (data.attendee.company ? ' · ' + data.attendee.company : '')
                     : null;
-                show(verdict[0], verdict[1], who, data.message);
-                addRecent(data);
+                show(data.tone || 'bad', data.instruction || 'DO NOT LET IN', who, data.message);
+                if (data.activity) updateActivity(data.activity);
+                if (fromCamera) holdUntil = Date.now() + RESULT_HOLD;
                 document.getElementById('count-in').textContent = data.event.checked_in;
                 document.getElementById('count-left').textContent = data.event.remaining;
                 if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) {
@@ -95,7 +109,7 @@
                 }
             })
             .catch(function () {
-                show('bad', 'OFFLINE', null, 'No connection to the server. Check the network and scan again.');
+                show('bad', 'NO CONNECTION', null, 'The ticket was not checked. Check the Wi-Fi, then scan again.');
                 lastCode = null;
             })
             .then(function () { busy = false; });
@@ -126,9 +140,9 @@
                     info.appendChild(el('div', 'muted small', (person.company ? person.company + ' · ' : '') + person.reference_code));
                     item.appendChild(info);
                     if (person.checked_in_at) {
-                        item.appendChild(el('span', 'badge badge-duplicate', 'In since ' + clock(new Date(person.checked_in_at))));
+                        item.appendChild(el('span', 'badge badge-inside', 'Inside since ' + clock(new Date(person.checked_in_at))));
                     } else {
-                        var button = el('button', 'btn btn-sm btn-primary', 'Check in');
+                        var button = el('button', 'btn btn-sm btn-primary', 'Let in');
                         button.type = 'button';
                         button.addEventListener('click', function () {
                             lastCode = null;
@@ -167,7 +181,7 @@
 
     if (window.Html5Qrcode) {
         var reader = new window.Html5Qrcode('reader');
-        reader.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 240, height: 240 } }, check)
+        reader.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 240, height: 240 } }, function (decoded) { check(decoded, true); })
             .then(function () { note.textContent = 'Camera on. Hold the QR code inside the square.'; })
             .catch(function () {
                 note.textContent = 'Camera unavailable. Allow camera access, or open this page over HTTPS or on localhost. You can still search by name or ticket code below.';

@@ -29,7 +29,7 @@
             </form>
 
             <div class="headcount" aria-live="polite">
-                <div><strong id="count-in">{{ $attendance['checked_in'] }}</strong><span>Checked in</span></div>
+                <div><strong id="count-in">{{ $attendance['checked_in'] }}</strong><span>Entered</span></div>
                 <div><strong id="count-left">{{ $attendance['remaining'] }}</strong><span>Still to arrive</span></div>
                 <div><strong>{{ $attendance['capacity'] }}</strong><span>Capacity</span></div>
             </div>
@@ -38,8 +38,8 @@
             <p id="camera-note" class="muted small" style="margin-top:6px">Starting camera…</p>
 
             <div id="result" class="scan-result" role="status" aria-live="assertive">
-                <div class="verdict">Ready</div>
-                <div class="muted">Point the camera at the QR code on the pass.</div>
+                <div class="verdict">READY TO SCAN</div>
+                <div class="muted">Hold the QR code on the guest's pass inside the square.</div>
             </div>
 
             <form id="manual-form" class="manual" autocomplete="off" data-no-loading>
@@ -48,22 +48,17 @@
             </form>
             <div id="matches" aria-live="polite"></div>
 
-            <h2 class="h3" style="margin-top:26px">Recent scans</h2>
-            <div class="table-wrap">
-                <table class="table">
-                    <tbody id="recent">
-                        @forelse ($recent as $scan)
-                            <tr>
-                                <td class="nowrap">{{ $scan->created_at->format('g:i A') }}</td>
-                                <td>{{ $scan->registration?->user?->name ?? 'Unknown pass' }}</td>
-                                <td class="right"><span class="badge badge-{{ $scan->result }}">{{ str_replace('_', ' ', $scan->result) }}</span></td>
-                            </tr>
-                        @empty
-                            <tr id="recent-empty"><td class="muted">No scans yet for this event.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
+            <div class="activity-head">
+                <h2 class="h3">Gate activity</h2>
+                <p class="muted small">One line per ticket, newest first. Repeat scans are counted, not listed again.</p>
             </div>
+            <ul class="activity" id="recent">
+                @forelse ($activity as $row)
+                    @include('gate.partials.activity-row', ['row' => $row])
+                @empty
+                    <li class="activity-empty" id="recent-empty">No scans yet for this event.</li>
+                @endforelse
+            </ul>
         @endif
     </div>
 @endsection
@@ -71,6 +66,6 @@
 @if ($event)
     @push('scripts')
         <script src="{{ asset('js/vendor/html5-qrcode.min.js') }}" defer></script>
-        <script src="{{ asset('js/scanner.js') }}?v=4" defer></script>
+        <script src="{{ asset('js/scanner.js') }}?v=5" defer></script>
     @endpush
 @endif
