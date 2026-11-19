@@ -60,6 +60,17 @@ class User extends Authenticatable
         return $this->hasMany(Registration::class);
     }
 
+    /**
+     * Event participation matrix: every event this user holds a ticket for,
+     * joined through the registrations pivot table.
+     */
+    public function registeredEvents(): BelongsToMany
+    {
+        return $this->belongsToMany(Event::class, 'registrations')
+            ->withPivot('reference_code', 'status', 'checked_in_at')
+            ->withTimestamps();
+    }
+
     /** Events this user speaks at. */
     public function sessions(): BelongsToMany
     {

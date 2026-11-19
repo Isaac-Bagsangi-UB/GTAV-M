@@ -81,6 +81,14 @@ class Event extends Model
         return $this->hasMany(Registration::class)->where('registrations.status', Registration::CONFIRMED);
     }
 
+    /** People holding a ticket for this event, joined through the registrations pivot table. */
+    public function attendees(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'registrations')
+            ->withPivot('reference_code', 'status', 'checked_in_at')
+            ->withTimestamps();
+    }
+
     public function speakers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'event_speaker')->withPivot('topic')->withTimestamps();

@@ -77,7 +77,8 @@ php artisan serve
 Open http://127.0.0.1:8000. No `npm` build is needed: the interface uses the plain stylesheet and scripts in `public/`.
 
 > Run `php artisan migrate:fresh --seed` again right before a demo. The demo data is dated relative to today
-> and includes one event happening today, so the scanner always has something to scan.
+> and includes one event happening today, so the scanner always has something to scan. Seeding about 2,250 records
+> takes 15 to 30 seconds.
 
 **Run the automated tests:**
 
@@ -108,6 +109,19 @@ Password for all of them: `password`
 6. **Forgotten password:** on the log in page, request a reset link. With `MAIL_MAILER=log` the email is written to `storage/logs/laravel.log`; open the link from there.
 7. **API:** run the examples in `API.md`.
 
+## The 8 technical requirements
+
+| # | Requirement | Where it is |
+| --- | --- | --- |
+| 1 | Multi-role authorization | 5 roles. `EnsureRole` middleware guards each area in `routes/web.php` and `routes/api.php`; Gates `manage-event`, `scan-event`, `upload-materials`, `access-materials` in `AppServiceProvider` guard actions per chapter and per event; `@can` hides buttons in the views. Tests: `RoleAccessTest`, `GateCheckInTest`. |
+| 2 | Authentication | Register (attendee or speaker), log in, log out, forgotten password, session regenerated on log in and invalidated on log out (`Auth/` controllers). Tests: `AuthenticationTest`, `PasswordResetTest`. |
+| 3 | Advanced relationships | Many-to-many: `User::registeredEvents()` / `Event::attendees()` through the `registrations` pivot, and `User::sessions()` / `Event::speakers()` through `event_speaker`. Has-many-through: `Chapter::registrations()` (chapters → events → registrations). Test: `DatabaseRelationshipsTest`. |
+| 4 | 1,000+ seeded records | `DatabaseSeeder` creates about 2,250 records; the year of chapter history is built with factories and relationship states (`for()`, `sequence()`, `registeredDuring()`, `CheckInFactory::admits()`). Test: `DatabaseSeederTest`. |
+| 5 | File upload and download | Workshop materials: validated by type and size (20 MB), stored with the `Storage` facade on the private disk, downloaded only by registered attendees, speakers and staff (`MaterialController`). Tests: `MaterialFilesTest`. |
+| 6 | Token API | `routes/api.php`, `/api/v1`, Sanctum bearer tokens, `EventResource` and `RegistrationResource`. Tests: `ApiEndpointsTest`, `GateCheckInTest`. Reference: `API.md`. |
+| 7 | Unit and feature tests | `tests/Unit` (capacity and window rules, cancellation and certificate rules, report totals, file size labels, ticket tokens) and `tests/Feature` (routes, authorization, uploads, API structure, reports, seeding). |
+| 8 | MVC structure | Web controllers by role in `app/Http/Controllers/{Auth,Admin,Manage,Speaker,Gate}`, API controllers in `app/Http/Controllers/Api`, business rules in `app/Services`, Blade views. |
+
 ## Where things are
 
 ```
@@ -125,7 +139,7 @@ app/Http/Controllers/
 app/Support/                    QrCode.php (QR as SVG), Brand.php (logo for PDFs)
 database/migrations/            Laravel's users, cache and jobs tables, plus 9 for this app (incl. API tokens)
 database/factories/  database/seeders/   test factories and demo data
-tests/Feature/                   PHPUnit feature tests (php artisan test)
+tests/Unit/  tests/Feature/      PHPUnit unit and feature tests (php artisan test)
 API.md  DEPLOYMENT.md            REST API reference; going live on a server
 resources/views/                Blade templates; pdf/ = pass, certificate, reports; errors/ = branded error pages
 resources/fonts/                heading font for PDFs
@@ -138,16 +152,20 @@ routes/web.php  routes/api.php
 ## Database
 
 - `chapters` 1 to many `events`; `events` 1 to many `events` (sub-events through `parent_id`)
-- `users` many to many `events` through `registrations` (the participation matrix)
+- `users` many to many `events` through `registrations` (the participation matrix): `User::registeredEvents()`, `Event::attendees()`
 - `users` many to many `events` through `event_speaker` (speakers)
+- `chapters` has many `registrations` through `events`: `Chapter::registrations()`, used by the chapter reports
 - `events` 1 to many `materials`; `registrations` 1 to many `check_ins` (every scan, including rejected ones)
 - `audit_logs`: who did what and when
 - `users.chapter_id` limits managers and gate staff to one chapter
 
 ## How it was tested
 
-`tests/Feature` holds PHPUnit tests for role access, registration rules (capacity, cutoff, duplicates), gate scanning,
-the three reports, password reset and the administration safeguards. Run them with `php artisan test`.
+72 PHPUnit tests. `tests/Unit` checks the business rules on their own: capacity and registration window, when a ticket
+can be cancelled or earn a certificate, report totals, file size labels, ticket tokens. `tests/Feature` covers sign-up,
+log in and log out, role access, registration rules, gate scanning, file upload and download, the API's JSON structure
+and tokens, the three reports, password reset, the administration safeguards and the 1,000-record seeder.
+Run them with `php artisan test`.
 
 Before delivery the code also ran on a real Laravel 13 install with the demo data:
 
