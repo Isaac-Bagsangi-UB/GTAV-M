@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Chapter;
 use App\Models\Event;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -85,6 +86,20 @@ class EventFactory extends Factory
             'ends_at' => now()->subDays(9),
             'registration_opens_at' => now()->subDays(40),
             'registration_closes_at' => now()->subDays(11),
+        ]);
+    }
+
+    /**
+     * Indicate that the event took place, or will take place, on the given day, with
+     * registration open for eight weeks and closing two days before the doors open.
+     */
+    public function heldOn(CarbonInterface $startsAt, int $days = 1): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'starts_at' => $startsAt->copy(),
+            'ends_at' => $startsAt->copy()->addDays($days - 1)->setTime(17, 0),
+            'registration_opens_at' => $startsAt->copy()->subWeeks(8),
+            'registration_closes_at' => $startsAt->copy()->subDays(2),
         ]);
     }
 

@@ -8,11 +8,14 @@ use App\Models\Event;
 use App\Models\Registration;
 use App\Models\User;
 use App\Services\RegistrationService;
+use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Demo data: 3 chapters, 5 roles, past and upcoming events with sub-events.
+ * Demo data: 3 chapters, 5 roles, past and upcoming events with sub-events, plus a year
+ * of factory-generated chapter history (over 2,000 records in total).
  * Every account uses the password "password".
  */
 class DatabaseSeeder extends Seeder
@@ -153,6 +156,89 @@ class DatabaseSeeder extends Seeder
                 'size' => strlen($body),
             ]);
         }
+
+        $this->pastYear($sets, $speakers);
+    }
+
+    /**
+     * A year of finished chapter events built entirely with model factories, so the reports,
+     * the participation matrix and the certificates have realistic volume behind them.
+     * Adds roughly 2,000 records: 210 attendees, 12 events, about 850 tickets and 700 gate scans.
+     *
+     * @param  array<int, array{0: Chapter, 1: string, 2: string, 3: User}>  $sets
+     * @param  Collection<int, User>  $speakers
+     */
+    private function pastYear(array $sets, Collection $speakers): void
+    {
+        $crowd = User::factory()->count(210)->create();
+
+        $calendar = [
+            // months ago, title, type, days, capacity, ticket price, keynote topic
+            [11, '%s Import & Export Forum', 'summit', 1, 80, 150, 'Reading the new rules of origin'],
+            [8, '%s Logistics Technology Expo', 'expo', 2, 150, 200, 'Automation on the warehouse floor'],
+            [5, 'Workshop: Incoterms in Practice (%s)', 'workshop', 1, 30, 90, 'Who pays when the container is late'],
+            [3, '%s Trade Finance Summit', 'summit', 1, 120, 280, 'Letters of credit without the paperwork'],
+        ];
+
+        foreach ($sets as [$chapter, $city, $venue, $gate]) {
+            foreach ($calendar as $i => [$monthsAgo, $title, $type, $days, $capacity, $price, $topic]) {
+                $event = Event::factory()
+                    ->for($chapter)
+                    ->heldOn(now()->subMonths($monthsAgo)->addDays(fake()->numberBetween(0, 20))->setTime(9, 0), $days)
+                    ->create([
+                        'title' => sprintf($title, $city),
+                        'type' => $type,
+                        'venue' => $venue,
+                        'city' => $city,
+                        'capacity' => $capacity,
+                        'ticket_price' => $price,
+                        'description' => 'Hosted by the '.$chapter->name.'. Practitioners share what is working now, with time to meet suppliers and peers.',
+                    ]);
+                $event->speakers()->attach($speakers[$i % $speakers->count()]->id, ['topic' => $topic]);
+
+                $this->ticketsFor($event, $crowd, $gate);
+            }
+        }
+    }
+
+    /**
+     * Sells between 60% and 90% of an event's seats to people from the crowd, admits most of them
+     * at the gate, records a few repeat scans, and adds a handful of cancelled tickets.
+     *
+     * @param  Collection<int, User>  $crowd
+     */
+    private function ticketsFor(Event $event, Collection $crowd, User $gate): void
+    {
+        $sold = (int) round($event->capacity * fake()->randomFloat(2, 0.6, 0.9));
+        $people = $crowd->shuffle();
+        $buyers = $people->take($sold)->values();
+        $cancellers = $people->slice($sold, fake()->numberBetween(1, 4))->values();
+
+        $tickets = Registration::factory()
+            ->count($buyers->count())
+            ->for($event)
+            ->registeredDuring($event)
+            ->sequence(fn (Sequence $sequence) => ['user_id' => $buyers[$sequence->index]->id])
+            ->create();
+
+        foreach ($tickets as $ticket) {
+            if (fake()->boolean(82)) {
+                $scannedAt = $event->starts_at->copy()->addMinutes(fake()->numberBetween(-30, 150));
+                CheckIn::factory()->admits($ticket, $gate, $scannedAt)->create();
+
+                if (fake()->boolean(6)) {
+                    CheckIn::factory()->admits($ticket, $gate, $scannedAt->copy()->addSeconds(4))->refused()->create();
+                }
+            }
+        }
+
+        Registration::factory()
+            ->count($cancellers->count())
+            ->for($event)
+            ->registeredDuring($event)
+            ->cancelled()
+            ->sequence(fn (Sequence $sequence) => ['user_id' => $cancellers[$sequence->index]->id])
+            ->create();
     }
 
     private function user(string $name, string $email, string $role, ?string $company = null, ?int $chapterId = null): User
