@@ -7,7 +7,7 @@
     <meta name="robots" content="noindex">
     <title>@yield('title') · GTAV-M</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="48x48">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v=4">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v=5">
 </head>
 <body>
     <main class="container page error-page" id="main">

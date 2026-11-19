@@ -53,7 +53,8 @@ php artisan key:generate
 ```
 
 **Database.** Start MySQL and create an empty database named `gtavm` (phpMyAdmin works). `.env.example` uses
-`DB_PORT=3307`; change it to `3306` if your MySQL runs on the default port (XAMPP does). Add `MAIL_MAILER=log`
+`DB_PORT=3307`; change it to `3306` if your MySQL runs on the default port (XAMPP does). `APP_TIMEZONE=Asia/Manila`
+sets the clock used on every screen, pass and report; change it if the events run in another timezone. Add `MAIL_MAILER=log`
 so password-reset emails are written to `storage/logs/laravel.log` instead of being sent.
 
 ```env
@@ -100,7 +101,7 @@ Password for all of them: `password`
 ## A demo that touches every requirement
 
 1. **Attendee:** log in, open *My passes*, download the entry pass for "Singapore Members Briefing" (today) and the certificate for the past expo. Browse events: the Cold Chain workshop is **sold out** (capacity rule) and the Technical Summit **opens soon** (registration window rule).
-2. **Gate staff** (phone or second browser): pick "Singapore Members Briefing", scan the QR on the pass or type its ticket code. First scan says **ADMIT**, a second says **ALREADY IN**. Type part of a name to find someone whose QR will not scan.
+2. **Gate staff** (phone or second browser): pick "Singapore Members Briefing", scan the QR on the pass or type its ticket code. The first scan says **LET IN**; scanning it again says **ALREADY INSIDE** with the time they entered; an unknown or cancelled ticket says **DO NOT LET IN** with the reason. *Gate activity* keeps one line per ticket and counts repeat scans. Type part of a name to find someone whose QR will not scan.
 3. **Chapter manager:** sees only Asia-Pacific figures; opens an event, exports the CSV, uploads a material, assigns a speaker, generates the three reports.
 4. **Administrator:** all chapters, the participation matrix, users and roles, the audit log of everything above.
 5. **Speaker:** sees assigned sessions, uploads slides, downloads the speaker certificate for the past expo.

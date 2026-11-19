@@ -31,9 +31,7 @@ class ScannerController extends Controller
             'events' => $events,
             'event' => $event,
             'attendance' => $event ? $service->attendance($event) : null,
-            'recent' => $event
-                ? $event->checkIns()->with('registration.user')->latest()->take(8)->get()
-                : collect(),
+            'activity' => $event ? $service->recentActivity($event) : [],
         ]);
     }
 
