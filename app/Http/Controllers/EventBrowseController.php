@@ -6,7 +6,9 @@ use App\Models\Chapter;
 use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /** Public catalog of published events. */
 class EventBrowseController extends Controller
@@ -65,10 +67,28 @@ class EventBrowseController extends Controller
         ]);
     }
 
+    /** Streams the event's venue photo from the private disk. Same visibility rule as the event page. */
+    public function cover(Request $request, Event $event): StreamedResponse
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $event->status === 'published' || ($user && Gate::forUser($user)->allows('manage-event', $event)),
+            404
+        );
+        abort_unless($event->cover_path && Storage::disk('local')->exists($event->cover_path), 404);
+
+        return Storage::disk('local')->response($event->cover_path, null, [
+            // The URL carries a version number, so browsers may keep the image for a week.
+            'Cache-Control' => $event->status === 'published' ? 'public, max-age=604800' : 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     /** schema.org description of the event, so search engines can show its date, place and price. */
     private function structuredData(Event $event): string
     {
-        return json_encode([
+        return json_encode(array_filter([
             '@context' => 'https://schema.org',
             '@type' => 'BusinessEvent',
             'name' => $event->title,
@@ -78,6 +98,7 @@ class EventBrowseController extends Controller
             'eventStatus' => $event->status === 'cancelled' ? 'https://schema.org/EventCancelled' : 'https://schema.org/EventScheduled',
             'eventAttendanceMode' => 'https://schema.org/OfflineEventAttendanceMode',
             'location' => ['@type' => 'Place', 'name' => $event->venue, 'address' => $event->city ?: $event->venue],
+            'image' => $event->coverUrl(),
             'organizer' => ['@type' => 'Organization', 'name' => 'Global Trade Association, '.$event->chapter->name, 'url' => url('/')],
             'offers' => [
                 '@type' => 'Offer',
@@ -92,6 +113,6 @@ class EventBrowseController extends Controller
                 },
                 'validFrom' => $event->registration_opens_at->toIso8601String(),
             ],
-        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
+        ], fn ($value) => $value !== null), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
     }
 }

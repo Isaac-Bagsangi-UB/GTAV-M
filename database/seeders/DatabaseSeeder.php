@@ -11,15 +11,33 @@ use App\Services\RegistrationService;
 use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Throwable;
 
 /**
- * Demo data: 3 chapters, 5 roles, past and upcoming events with sub-events, plus a year
+ * Demo data: 4 chapters (including the Philippines), 5 roles, past and upcoming events with sub-events, plus a year
  * of factory-generated chapter history (over 2,000 records in total).
  * Every account uses the password "password".
  */
 class DatabaseSeeder extends Seeder
 {
+    /**
+     * One freely licensed Wikimedia Commons photo per city: file name and photographer.
+     *
+     * @var array<string, array{0: string, 1: string}>
+     */
+    private const COVER_PHOTOS = [
+        'Singapore' => ['1 Singapore skyline.jpg', 'chensiyuan'],
+        'Rotterdam' => ['Rotterdam-Skyline (cropped).jpg', 'acediscovery'],
+        'Houston' => ['George R. Brown Convention Center - Houston, Texas - DSC01321.JPG', 'Daderot'],
+        'Manila' => ['Manila Bay, Sunset, Philippines.jpg', 'Vyacheslav Argenberg'],
+        'Cebu City' => ['Cebu City skyline, CCLEX Bridge west pylon drone view (Cebu City; 01-21-2025).jpg', 'Patrickroque01'],
+        'Davao City' => ['Davao City skyline 02.jpg', 'Teemu Väisänen'],
+        'Baguio City' => ['Baguio Convention Center, July 2025 (1).jpg', 'Ralff Nestor Nacor'],
+    ];
+
     public function run(): void
     {
         // ---- Chapters and their staff -----------------------------------
@@ -30,6 +48,7 @@ class DatabaseSeeder extends Seeder
             ['Asia-Pacific Chapter', 'APAC', 'Asia-Pacific', 'Singapore', 'Marina Bay Convention Centre'],
             ['Europe Chapter', 'EUR', 'Europe, Middle East & Africa', 'Rotterdam', 'Maas Exhibition Halls'],
             ['Americas Chapter', 'AMER', 'North & South America', 'Houston', 'Gulf Coast Trade Center'],
+            ['Philippines Chapter', 'PH', 'Philippines', 'Manila', 'SMX Convention Center Manila'],
         ] as [$name, $code, $region, $city, $venue]) {
             $chapter = Chapter::create(['name' => $name, 'code' => $code, 'region' => $region]);
             $slug = strtolower($code);
@@ -157,7 +176,112 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        [$philippines, , , $philippinesGate] = $sets[3];
+        $this->philippineRegions($philippines, $philippinesGate, $attendees, $speakers);
+
         $this->pastYear($sets, $speakers);
+        $this->coverPhotos();
+    }
+
+    /**
+     * Events of the Philippines Chapter outside Metro Manila: Cebu, Davao and Baguio.
+     *
+     * @param  Collection<int, User>  $attendees
+     * @param  Collection<int, User>  $speakers
+     */
+    private function philippineRegions(Chapter $chapter, User $gate, Collection $attendees, Collection $speakers): void
+    {
+        $cebuStart = now()->addDays(40)->setTime(9, 0);
+        $cebu = $this->event($chapter, [
+            'title' => 'Cebu Maritime & Ports Summit',
+            'type' => 'summit',
+            'venue' => 'Waterfront Cebu City Hotel', 'city' => 'Cebu City',
+            'starts_at' => $cebuStart, 'ends_at' => $cebuStart->copy()->setTime(18, 0),
+            'registration_opens_at' => now()->subDays(10),
+            'registration_closes_at' => $cebuStart->copy()->subDays(3),
+            'capacity' => 120, 'ticket_price' => 150,
+        ]);
+        $this->fill($cebu, $attendees, 16, 0, null, null, true, 1);
+        $cebu->speakers()->attach($speakers[1]->id, ['topic' => 'Inter-island shipping after the new port rules']);
+
+        $davaoStart = now()->addDays(55)->setTime(9, 0);
+        $davao = $this->event($chapter, [
+            'title' => 'Davao Agri-Trade Expo',
+            'type' => 'expo',
+            'venue' => 'SMX Convention Center Davao', 'city' => 'Davao City',
+            'starts_at' => $davaoStart, 'ends_at' => $davaoStart->copy()->addDays(2)->setTime(17, 0),
+            'registration_opens_at' => now()->subDays(5),
+            'registration_closes_at' => $davaoStart->copy()->subDays(1),
+            'capacity' => 200, 'ticket_price' => 90,
+        ]);
+        $this->fill($davao, $attendees, 12, 0);
+        $davao->speakers()->attach($speakers[0]->id, ['topic' => 'Getting Mindanao produce to export markets fresh']);
+
+        $baguioStart = now()->addDays(32)->setTime(13, 0);
+        $baguio = $this->event($chapter, [
+            'title' => 'Workshop: Exporting Cordillera Coffee',
+            'type' => 'workshop',
+            'venue' => 'Baguio Convention and Cultural Center', 'city' => 'Baguio City',
+            'starts_at' => $baguioStart, 'ends_at' => $baguioStart->copy()->setTime(17, 0),
+            'registration_opens_at' => now()->subDays(12),
+            'registration_closes_at' => $baguioStart->copy()->subDays(2),
+            'capacity' => 40, 'ticket_price' => 45,
+        ]);
+        $this->fill($baguio, $attendees, 21, 0);
+        $baguio->speakers()->attach($speakers[1]->id, ['topic' => 'From farm to green-bean buyer: grading and paperwork']);
+    }
+
+    /**
+     * Real venue and city photos from Wikimedia Commons, one per city, downloaded once and kept in
+     * storage/app/private/event-covers/demo so later reseeds need no internet. Without internet the
+     * events keep the drawn gold covers. Each photo's licence is on its Wikimedia Commons page.
+     */
+    private function coverPhotos(): void
+    {
+        $offline = false;
+
+        foreach (self::COVER_PHOTOS as $city => [$fileName, $photographer]) {
+            $path = 'event-covers/demo/'.Str::slug($city).'.jpg';
+
+            if (! Storage::disk('local')->exists($path)) {
+                $image = $offline ? null : $this->downloadPhoto($fileName, $offline);
+
+                if ($image === null) {
+                    continue;
+                }
+                Storage::disk('local')->put($path, $image);
+            }
+
+            Event::where('city', $city)->update([
+                'cover_path' => $path,
+                'cover_credit' => 'Photo: '.$photographer.' / Wikimedia Commons ('.$fileName.')',
+            ]);
+        }
+
+        if ($offline) {
+            $this->command?->warn('Could not download the venue photos (no internet, or HTTPS blocked), so events use the drawn covers. Run the seeder again online to add them.');
+        }
+    }
+
+    /** Fetches a 1280-pixel-wide copy of a Wikimedia Commons file. Returns null if it is unavailable. */
+    private function downloadPhoto(string $fileName, bool &$offline): ?string
+    {
+        try {
+            $response = Http::withUserAgent('GTAV-M demo seeder (Laravel school project)')
+                ->connectTimeout(5)
+                ->timeout(25)
+                ->get('https://commons.wikimedia.org/wiki/Special:FilePath/'.rawurlencode(str_replace(' ', '_', $fileName)), ['width' => 1280]);
+        } catch (Throwable) {
+            // No internet, a firewall, or a PHP install without HTTPS certificates: keep the drawn covers.
+            $offline = true;
+
+            return null;
+        }
+
+        $image = $response->successful() ? $response->body() : '';
+        $info = $image !== '' ? getimagesizefromstring($image) : false;
+
+        return $info && in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true) ? $image : null;
     }
 
     /**

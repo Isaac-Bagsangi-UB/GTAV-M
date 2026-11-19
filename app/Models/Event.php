@@ -169,6 +169,20 @@ class Event extends Model
         return (float) $this->ticket_price > 0 ? '$'.number_format((float) $this->ticket_price, 2) : 'Free';
     }
 
+    /** Address of the uploaded venue photo, or null when the event uses the drawn cover. */
+    public function coverUrl(): ?string
+    {
+        return $this->cover_path
+            ? route('events.cover', ['event' => $this, 'v' => $this->updated_at?->timestamp])
+            : null;
+    }
+
+    /** Short place name for the cover: the city, or the venue when no city is set. */
+    public function placeName(): string
+    {
+        return $this->city ?: $this->venue;
+    }
+
     public function dateRange(): string
     {
         if ($this->starts_at->isSameDay($this->ends_at)) {

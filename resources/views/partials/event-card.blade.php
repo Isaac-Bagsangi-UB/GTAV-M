@@ -1,5 +1,6 @@
-{{-- Expects: $event (with chapter and confirmed_registrations_count loaded) --}}
+{{-- Expects: $event (with chapter and confirmed_registrations_count loaded). Optional: $eager for the first card on a page. --}}
 <a class="event-card" href="{{ route('events.show', $event) }}">
+    @include('partials.event-cover', ['event' => $event, 'variant' => 'card', 'eager' => $eager ?? false])
     <div class="event-card-top">
         <span class="badge badge-type">{{ $event->typeLabel() }}</span>
         <span class="badge badge-{{ $event->registrationState() }}">{{ $event->stateLabel() }}</span>

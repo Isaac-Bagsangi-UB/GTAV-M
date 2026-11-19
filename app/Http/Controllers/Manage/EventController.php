@@ -10,7 +10,9 @@ use App\Models\User;
 use App\Services\ChapterReportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -45,7 +47,11 @@ class EventController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $event = Event::create($this->validated($request));
+        $data = $this->validated($request);
+        $cover = $this->validatedCover($request);
+
+        $event = Event::create($data);
+        $this->applyCover($event, $request, $cover);
         AuditLog::record('event.created', 'Created event "'.$event->title.'"');
 
         return redirect()->route('manage.events.show', $event)->with('success', 'Event created.');
@@ -85,7 +91,11 @@ class EventController extends Controller
     {
         Gate::authorize('manage-event', $event);
 
-        $event->update($this->validated($request, $event));
+        $data = $this->validated($request, $event);
+        $cover = $this->validatedCover($request);
+
+        $event->update($data);
+        $this->applyCover($event, $request, $cover);
         AuditLog::record('event.updated', 'Updated event "'.$event->title.'" (status '.$event->status.', capacity '.$event->capacity.')');
 
         return redirect()->route('manage.events.show', $event)->with('success', 'Event updated.');
@@ -99,7 +109,9 @@ class EventController extends Controller
             return back()->with('error', 'This event has confirmed registrations. Set its status to Cancelled instead of deleting it.');
         }
 
+        $coverPath = $event->cover_path;
         $event->delete();
+        $this->deleteCoverFile($coverPath);
         AuditLog::record('event.deleted', 'Deleted event "'.$event->title.'"');
 
         return redirect()->route('manage.events.index')->with('success', 'Event deleted.');
@@ -134,6 +146,67 @@ class EventController extends Controller
 
             fclose($out);
         }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
+    /**
+     * Checks the optional venue photo: a real image, at least 800 × 450 pixels, at most 4 MB.
+     *
+     * @return array{cover?: UploadedFile, cover_credit?: string|null, remove_cover?: bool}
+     */
+    private function validatedCover(Request $request): array
+    {
+        return $request->validate([
+            'cover' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096', 'dimensions:min_width=800,min_height=450'],
+            'cover_credit' => ['nullable', 'string', 'max:255'],
+            'remove_cover' => ['nullable', 'boolean'],
+        ], [
+            'cover.dimensions' => 'The photo must be at least 800 × 450 pixels so it stays sharp on the event page.',
+        ]);
+    }
+
+    /** Stores a new venue photo on the private disk, or removes the current one when asked. */
+    private function applyCover(Event $event, Request $request, array $cover): void
+    {
+        $oldPath = $event->cover_path;
+
+        if ($request->hasFile('cover')) {
+            $event->forceFill([
+                'cover_path' => $request->file('cover')->store('event-covers/'.$event->id, 'local'),
+                'cover_credit' => $cover['cover_credit'] ?? null,
+            ])->save();
+            $this->deleteCoverFile($oldPath, $event);
+            AuditLog::record('event.cover_uploaded', 'Uploaded a cover photo for "'.$event->title.'"');
+
+            return;
+        }
+
+        if (! empty($cover['remove_cover']) && $oldPath) {
+            $event->forceFill(['cover_path' => null, 'cover_credit' => null])->save();
+            $this->deleteCoverFile($oldPath, $event);
+            AuditLog::record('event.cover_removed', 'Removed the cover photo of "'.$event->title.'"');
+
+            return;
+        }
+
+        if ($oldPath && array_key_exists('cover_credit', $cover)) {
+            $event->forceFill(['cover_credit' => $cover['cover_credit']])->save();
+        }
+    }
+
+    /** Deletes a cover file unless another event still shows it (the demo data shares one photo per city). */
+    private function deleteCoverFile(?string $path, ?Event $except = null): void
+    {
+        if (! $path) {
+            return;
+        }
+
+        $stillUsed = Event::where('cover_path', $path)
+            ->when($except, fn ($q) => $q->whereKeyNot($except->id))
+            ->exists();
+
+        if (! $stillUsed) {
+            Storage::disk('local')->delete($path);
+        }
     }
 
     /** Null for administrators (no restriction); the manager's own chapter otherwise. */

@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/events', [EventBrowseController::class, 'index'])->name('events.index');
 Route::get('/events/{event}', [EventBrowseController::class, 'show'])->name('events.show');
+Route::get('/events/{event}/cover', [EventBrowseController::class, 'cover'])->name('events.cover');
 Route::view('/contact', 'pages.contact')->name('contact');
 Route::view('/privacy', 'pages.privacy')->name('privacy');
 Route::view('/terms', 'pages.terms')->name('terms');
