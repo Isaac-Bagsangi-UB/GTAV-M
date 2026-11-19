@@ -21,6 +21,9 @@ Format: JSON. Authentication: Laravel Sanctum bearer tokens.
 | GET | `/reports/chapters` | manager, admin | Tickets and revenue per chapter |
 | GET | `/reports/chapters/{id}` | manager, admin | One chapter broken down by event |
 
+Each event includes `cover_url` (the venue photo, a JPEG, PNG or WebP image; `null` when the event uses the drawn
+cover) and `cover_credit` (photographer credit, or `null`). The photo itself is public for published events.
+
 Status codes: `200` OK, `201` created, `401` no or bad token, `403` role not allowed,
 `404` not found, `409` already checked in, `422` validation or business-rule failure, `429` too many requests.
 

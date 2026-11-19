@@ -77,8 +77,13 @@ php artisan serve
 Open http://127.0.0.1:8000. No `npm` build is needed: the interface uses the plain stylesheet and scripts in `public/`.
 
 > Run `php artisan migrate:fresh --seed` again right before a demo. The demo data is dated relative to today
-> and includes one event happening today, so the scanner always has something to scan. Seeding about 2,250 records
-> takes 15 to 30 seconds.
+> and includes one event happening today, so the scanner always has something to scan. Seeding about 3,000 records
+> takes 20 to 40 seconds.
+>
+> **Venue photos:** the first time you seed with internet, the seeder downloads one free-licensed photo per city
+> from Wikimedia Commons (Singapore, Rotterdam, Houston, Manila, Cebu, Davao, Baguio) into
+> `storage/app/private/event-covers/demo`. Later reseeds reuse them, so they work offline. Without internet the
+> events show drawn gold covers instead. The photographer is credited under each photo on the event page.
 
 **Run the automated tests:**
 
@@ -95,9 +100,11 @@ Password for all of them: `password`
 | Administrator | admin@gtavm.test |
 | Chapter manager (Asia-Pacific) | manager.apac@gtavm.test |
 | Chapter manager (Europe / Americas) | manager.eur@gtavm.test / manager.amer@gtavm.test |
+| Chapter manager (Philippines) | manager.ph@gtavm.test |
 | Attendee | attendee@gtavm.test |
 | Speaker | speaker@gtavm.test |
 | Gate staff (Asia-Pacific) | gate.apac@gtavm.test |
+| Gate staff (Philippines) | gate.ph@gtavm.test (scans "Manila Members Briefing", today) |
 
 ## A demo that touches every requirement
 
@@ -116,8 +123,8 @@ Password for all of them: `password`
 | 1 | Multi-role authorization | 5 roles. `EnsureRole` middleware guards each area in `routes/web.php` and `routes/api.php`; Gates `manage-event`, `scan-event`, `upload-materials`, `access-materials` in `AppServiceProvider` guard actions per chapter and per event; `@can` hides buttons in the views. Tests: `RoleAccessTest`, `GateCheckInTest`. |
 | 2 | Authentication | Register (attendee or speaker), log in, log out, forgotten password, session regenerated on log in and invalidated on log out (`Auth/` controllers). Tests: `AuthenticationTest`, `PasswordResetTest`. |
 | 3 | Advanced relationships | Many-to-many: `User::registeredEvents()` / `Event::attendees()` through the `registrations` pivot, and `User::sessions()` / `Event::speakers()` through `event_speaker`. Has-many-through: `Chapter::registrations()` (chapters → events → registrations). Test: `DatabaseRelationshipsTest`. |
-| 4 | 1,000+ seeded records | `DatabaseSeeder` creates about 2,250 records; the year of chapter history is built with factories and relationship states (`for()`, `sequence()`, `registeredDuring()`, `CheckInFactory::admits()`). Test: `DatabaseSeederTest`. |
-| 5 | File upload and download | Workshop materials: validated by type and size (20 MB), stored with the `Storage` facade on the private disk, downloaded only by registered attendees, speakers and staff (`MaterialController`). Tests: `MaterialFilesTest`. |
+| 4 | 1,000+ seeded records | `DatabaseSeeder` creates about 3,000 records across 4 chapters, including the Philippines (Manila, Cebu, Davao, Baguio); the year of chapter history is built with factories and relationship states (`for()`, `sequence()`, `registeredDuring()`, `CheckInFactory::admits()`). Test: `DatabaseSeederTest`. |
+| 5 | File upload and download | Workshop materials: validated by type and size (20 MB), stored with the `Storage` facade on the private disk, downloaded only by registered attendees, speakers and staff (`MaterialController`). Event cover photos: validated as images (JPG, PNG, WebP, 4 MB, at least 800 × 450), stored privately and streamed by `EventBrowseController@cover`. Tests: `MaterialFilesTest`, `EventCoverTest`. |
 | 6 | Token API | `routes/api.php`, `/api/v1`, Sanctum bearer tokens, `EventResource` and `RegistrationResource`. Tests: `ApiEndpointsTest`, `GateCheckInTest`. Reference: `API.md`. |
 | 7 | Unit and feature tests | `tests/Unit` (capacity and window rules, cancellation and certificate rules, report totals, file size labels, ticket tokens) and `tests/Feature` (routes, authorization, uploads, API structure, reports, seeding). |
 | 8 | MVC structure | Web controllers by role in `app/Http/Controllers/{Auth,Admin,Manage,Speaker,Gate}`, API controllers in `app/Http/Controllers/Api`, business rules in `app/Services`, Blade views. |
@@ -161,10 +168,10 @@ routes/web.php  routes/api.php
 
 ## How it was tested
 
-72 PHPUnit tests. `tests/Unit` checks the business rules on their own: capacity and registration window, when a ticket
+81 PHPUnit tests. `tests/Unit` checks the business rules on their own: capacity and registration window, when a ticket
 can be cancelled or earn a certificate, report totals, file size labels, ticket tokens. `tests/Feature` covers sign-up,
 log in and log out, role access, registration rules, gate scanning, file upload and download, the API's JSON structure
-and tokens, the three reports, password reset, the administration safeguards and the 1,000-record seeder.
+and tokens, cover photos, the three reports, password reset, the administration safeguards and the seeder.
 Run them with `php artisan test`.
 
 Before delivery the code also ran on a real Laravel 13 install with the demo data:

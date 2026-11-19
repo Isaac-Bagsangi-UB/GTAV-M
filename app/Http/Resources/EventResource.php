@@ -24,6 +24,8 @@ class EventResource extends JsonResource
                 'code' => $this->chapter->code,
             ]),
             'parent_id' => $this->parent_id,
+            'cover_url' => $this->coverUrl(),
+            'cover_credit' => $this->cover_path ? $this->cover_credit : null,
             'starts_at' => $this->starts_at->toIso8601String(),
             'ends_at' => $this->ends_at->toIso8601String(),
             'registration_opens_at' => $this->registration_opens_at->toIso8601String(),

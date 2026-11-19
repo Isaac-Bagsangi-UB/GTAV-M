@@ -17,7 +17,7 @@
         </div>
     </div>
 
-    <form class="card" method="POST" action="{{ $event->exists ? route('manage.events.update', $event) : route('manage.events.store') }}">
+    <form class="card" method="POST" action="{{ $event->exists ? route('manage.events.update', $event) : route('manage.events.store') }}" enctype="multipart/form-data">
         @csrf
         @if ($event->exists)
             @method('PUT')
@@ -97,6 +97,33 @@
                     <label for="ends_at">Ends</label>
                     <input id="ends_at" type="datetime-local" name="ends_at" value="{{ $dt('ends_at') }}" required>
                     @error('ends_at') <div class="error">{{ $message }}</div> @enderror
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Cover photo</legend>
+            <div class="cover-field">
+                <div class="cover-field-preview">
+                    @if ($event->exists)
+                        @include('partials.event-cover', ['event' => $event, 'variant' => 'card'])
+                    @endif
+                </div>
+                <div>
+                    <div class="field">
+                        <label for="cover">Venue photo (optional)</label>
+                        <input id="cover" type="file" name="cover" accept="image/jpeg,image/png,image/webp">
+                        <div class="hint">JPG, PNG or WebP, landscape, at least 800 × 450 pixels, up to 4 MB. Shown on the event card and as the banner of the event page. Without a photo, a gold drawing of the venue type is used.</div>
+                        @error('cover') <div class="error">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="field">
+                        <label for="cover_credit">Photo credit (optional)</label>
+                        <input id="cover_credit" name="cover_credit" value="{{ old('cover_credit', $event->cover_credit) }}" maxlength="255" placeholder="e.g. Photo: Jane Cruz, CC BY 4.0">
+                        @error('cover_credit') <div class="error">{{ $message }}</div> @enderror
+                    </div>
+                    @if ($event->cover_path)
+                        <label class="check"><input type="checkbox" name="remove_cover" value="1"> Remove the current photo</label>
+                    @endif
                 </div>
             </div>
         </fieldset>

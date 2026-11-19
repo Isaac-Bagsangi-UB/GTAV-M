@@ -38,6 +38,13 @@
         @endcan
     </div>
 
+    <figure class="event-hero">
+        @include('partials.event-cover', ['event' => $event, 'variant' => 'hero', 'eager' => true])
+        @if ($event->cover_path && $event->cover_credit)
+            <figcaption class="muted small">{{ $event->cover_credit }}</figcaption>
+        @endif
+    </figure>
+
     <div class="split">
         <div>
             <div class="card">

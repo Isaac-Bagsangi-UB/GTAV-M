@@ -37,7 +37,7 @@
         <h2 class="sr-only">Upcoming events</h2>
         <div class="grid grid-3">
             @foreach ($events as $event)
-                @include('partials.event-card', ['event' => $event])
+                @include('partials.event-card', ['event' => $event, 'eager' => $loop->index < 3])
             @endforeach
         </div>
         {{ $events->links() }}
