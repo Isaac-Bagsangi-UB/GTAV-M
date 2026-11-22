@@ -1,0 +1,5 @@
+@extends('layouts.app')
+@section('content')
+<div class="page-heading"><div><div class="eyebrow">YOUR ACCOUNT</div><h1>Account details.</h1><p class="muted">Keep your contact and company information current.</p></div></div>
+<div class="account-layout"><form method="POST" action="{{ route('account.update') }}" class="panel form-grid">@csrf @method('PUT')<label>Full name<input name="name" value="{{ old('name', $user->name) }}" required></label><label>Company<input name="company" value="{{ old('company', $user->company) }}"></label><label>Email<input type="email" name="email" value="{{ old('email', $user->email) }}" required></label><label>Role<input value="{{ ucwords(str_replace('_', ' ', $user->role)) }}" disabled></label><label>Password <span class="optional">leave blank to keep current</span><input type="password" name="password"></label><label>Confirm password<input type="password" name="password_confirmation"></label><div class="span-2"><button class="button primary">Save changes</button></div></form></div>
+@endsection
