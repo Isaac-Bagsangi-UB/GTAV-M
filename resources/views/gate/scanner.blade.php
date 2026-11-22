@@ -5,15 +5,13 @@
 
 @section('content')
     <div class="scanner" id="scanner"
-         @if ($event)
-             data-event-id="{{ $event->id }}"
+        @if ($event) data-event-id="{{ $event->id }}"
              data-scan-url="{{ route('gate.scan') }}"
-             data-search-url="{{ route('gate.search') }}"
-         @endif>
+             data-search-url="{{ route('gate.search') }}" @endif>
         <div class="eyebrow">Venue gate</div>
         <h1>Gate check-in</h1>
 
-        @if (! $event)
+        @if (!$event)
             <p class="muted">No events to scan.</p>
             <div class="empty">There are no published events on now or coming up for your chapter.</div>
         @else
@@ -43,14 +41,14 @@
             </div>
 
             <form id="manual-form" class="manual" autocomplete="off" data-no-loading>
-                <input id="manual-code" name="code" placeholder="Name or ticket code" aria-label="Attendee name or ticket code" maxlength="64">
+                <input id="manual-code" name="code" placeholder="Name or ticket code"
+                    aria-label="Attendee name or ticket code" maxlength="64">
                 <button class="btn btn-dark" type="submit">Find</button>
             </form>
             <div id="matches" aria-live="polite"></div>
 
             <div class="activity-head">
                 <h2 class="h3">Gate activity</h2>
-                <p class="muted small">One line per ticket, newest first. Repeat scans are counted, not listed again.</p>
             </div>
             <ul class="activity" id="recent">
                 @forelse ($activity as $row)
