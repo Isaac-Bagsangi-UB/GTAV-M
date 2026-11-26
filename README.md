@@ -80,9 +80,9 @@ Open http://127.0.0.1:8000. No `npm` build is needed: the interface uses the pla
 > and includes one event happening today, so the scanner always has something to scan. Seeding over 5,000 records
 > takes about a minute.
 >
-> **Venue photos:** the first time you seed with internet, the seeder downloads 18 free-licensed photos from
-> Wikimedia Commons into `storage/app/private/event-covers/demo`: the building of each chapter's venue, plus
-> conference halls and meeting rooms for sessions held inside a venue. Later reseeds reuse them, so they work
+> **Venue photos:** the first time you seed with internet, the seeder downloads 19 free-licensed photos from
+> Wikimedia Commons into `storage/app/private/event-covers/demo`: the building of each venue (also used for
+> sessions in its halls) and eight meeting rooms for workshops. Later reseeds reuse them, so they work
 > offline. Without internet the events show drawn gold covers instead.
 
 **Run the automated tests:**

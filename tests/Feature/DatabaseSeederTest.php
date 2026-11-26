@@ -73,15 +73,21 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame(0, Event::whereNull('cover_path')->count());
         $this->assertSame(0, Event::whereNotNull('cover_credit')->count(), 'no photo credits are shown');
 
-        // The expo in the main venue shows the venue building; workshops in a room show a meeting room.
-        $expo = Event::where('title', 'Houston Supply Chain Expo')->firstOrFail();
-        $this->assertSame('event-covers/demo/houston-convention-center-exterior-1.jpg', $expo->cover_path);
-        $this->assertStringContainsString('unsplash', Event::where('venue', 'like', '%, Room %')->firstOrFail()->cover_path);
+        // Events in the venue or one of its halls show the venue building; workshops in a room show a meeting room.
+        $houston = 'event-covers/demo/houston-convention-center-exterior-1.jpg';
+        $this->assertSame($houston, Event::where('title', 'Houston Supply Chain Expo')->value('cover_path'));
+        $this->assertSame($houston, Event::where('title', 'Houston Members Briefing')->value('cover_path'));
+        $this->assertStringContainsString('unsplash', Event::where('venue', 'like', '%, Room %')->value('cover_path'));
+
+        // Events shown side by side never share a picture: one briefing and one workshop per chapter.
+        $this->assertCount(8, Event::where('title', 'like', '% Members Briefing')->pluck('cover_path')->unique());
+        $this->assertCount(8, Event::where('venue', 'like', '%, Room 2A')->pluck('cover_path')->unique());
+        $this->assertCount(8, Event::where('venue', 'like', '%, Room 3C')->pluck('cover_path')->unique());
 
         Event::pluck('cover_path')->unique()->each(fn (string $path) => Storage::disk('local')->assertExists($path));
 
-        // Each photo is downloaded only once: 11 venues, 3 halls and 4 meeting rooms.
-        Http::assertSentCount(18);
+        // Each photo is downloaded only once: 11 venues and 8 meeting rooms.
+        Http::assertSentCount(19);
         Http::assertSent(fn ($request) => str_contains($request->url(), 'Special:FilePath') && $request->hasHeader('User-Agent'));
     }
 

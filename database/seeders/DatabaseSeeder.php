@@ -60,18 +60,8 @@ class DatabaseSeeder extends Seeder
     ];
 
     /**
-     * Conference halls, for sessions held in a hall inside the venue.
-     *
-     * @var list<string>
-     */
-    private const HALL_PHOTOS = [
-        'Wikimania, centro de convenciones y exposiciones Suntec, Singapur, 2023-08-16, DD 07.jpg',
-        'Conference room XIX in the Palace of Nations.jpg',
-        'Lecture Theatre of the Hive Building.JPG',
-    ];
-
-    /**
-     * Meeting and training rooms, for workshops held in a room inside the venue.
+     * Meeting and training rooms, for workshops held in a room inside a venue. There is one per chapter, so
+     * workshops running at the same time in different chapters never share a picture.
      *
      * @var list<string>
      */
@@ -80,6 +70,10 @@ class DatabaseSeeder extends Seeder
         'Minimalist meeting room (Unsplash).jpg',
         'White conference room (Unsplash).jpg',
         'Conference room table (Unsplash).jpg',
+        'Quiet meeting room (Unsplash).jpg',
+        'Large meeting room (Unsplash).jpg',
+        'Small conference room (Unsplash).jpg',
+        'Neat conference room (Unsplash).jpg',
     ];
 
     public function run(): void
@@ -272,8 +266,8 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Real photos of where each event takes place, from Wikimedia Commons: the venue building for events in
-     * the main venue, a conference hall for sessions in a hall, and a meeting room for workshops in a room.
+     * Real photos of where each event takes place, from Wikimedia Commons: the venue building for events held
+     * in the venue or one of its halls, and a meeting room for workshops held in a room.
      * Each photo is downloaded once and kept in storage/app/private/event-covers/demo, so later reseeds need
      * no internet. Without internet the events keep the drawn gold covers.
      */
@@ -281,7 +275,7 @@ class DatabaseSeeder extends Seeder
     {
         $offline = false;
 
-        foreach (Event::orderBy('id')->get(['id', 'venue', 'type']) as $event) {
+        foreach (Event::orderBy('id')->get(['id', 'chapter_id', 'venue']) as $event) {
             $fileName = $this->coverPhotoFor($event);
 
             if ($fileName === null) {
@@ -307,16 +301,20 @@ class DatabaseSeeder extends Seeder
         }
     }
 
-    /** The Wikimedia Commons file that shows where this event takes place, or null when none fits. */
+    /**
+     * The Wikimedia Commons file that shows where this event takes place, or null when none fits.
+     * A workshop's two rooms (2A and 3C) get pictures half the list apart, so they differ from each other too.
+     */
     private function coverPhotoFor(Event $event): ?string
     {
-        if (isset(self::VENUE_PHOTOS[$event->venue])) {
-            return self::VENUE_PHOTOS[$event->venue];
+        if (str_contains($event->venue, ', Room')) {
+            $offset = str_ends_with($event->venue, 'Room 3C') ? intdiv(count(self::ROOM_PHOTOS), 2) : 0;
+
+            return self::ROOM_PHOTOS[($event->chapter_id + $offset) % count(self::ROOM_PHOTOS)];
         }
 
-        $photos = str_contains($event->venue, ', Room') ? self::ROOM_PHOTOS : self::HALL_PHOTOS;
-
-        return $photos[$event->id % count($photos)];
+        // "Rotterdam Ahoy, Hall B" is held in the Rotterdam Ahoy building.
+        return self::VENUE_PHOTOS[Str::before($event->venue, ', ')] ?? null;
     }
 
     /** Fetches a 1280-pixel-wide copy of a Wikimedia Commons file. Returns null if it is unavailable. */
