@@ -25,6 +25,18 @@ class Chapter extends Model
         return $this->hasMany(User::class);
     }
 
+    /** Chapter managers: they organize every event the chapter hosts. */
+    public function managers(): HasMany
+    {
+        return $this->hasMany(User::class)->where('role', User::ROLE_MANAGER)->orderBy('name');
+    }
+
+    /** Venue gate staff who work the chapter's events. */
+    public function gateStaff(): HasMany
+    {
+        return $this->hasMany(User::class)->where('role', User::ROLE_GATE)->orderBy('name');
+    }
+
     /** Every registration for every event (and sub-event) in this chapter. */
     public function registrations(): HasManyThrough
     {

@@ -16,7 +16,7 @@
 <div class="cover cover-{{ $variant }}">
     @if ($photo)
         <img src="{{ $photo }}" alt="{{ $event->venue }}{{ $event->city ? ', '.$event->city : '' }}"
-             width="1280" height="600" @if ($event->cover_credit) title="{{ $event->cover_credit }}" @endif loading="{{ $eager ? 'eager' : 'lazy' }}" decoding="async">
+             width="1280" height="600" loading="{{ $eager ? 'eager' : 'lazy' }}" decoding="async">
     @else
         <svg viewBox="0 0 640 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
             <defs>

@@ -17,25 +17,69 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Demo data: 4 chapters (including the Philippines), 5 roles, past and upcoming events with sub-events, plus a year
- * of factory-generated chapter history (over 2,000 records in total).
+ * Demo data: 8 regional chapters, 5 roles, past and upcoming events with sub-events, plus a year
+ * of factory-generated chapter history (over 5,000 records in total).
  * Every account uses the password "password".
  */
 class DatabaseSeeder extends Seeder
 {
     /**
-     * One freely licensed Wikimedia Commons photo per city: file name and photographer.
+     * The regional chapters: name, code, countries covered, home city, main venue, and the names of
+     * the chapter manager and the two venue staff who organize and run its events.
      *
-     * @var array<string, array{0: string, 1: string}>
+     * @var list<array{0: string, 1: string, 2: string, 3: string, 4: string, 5: string, 6: string, 7: string}>
      */
-    private const COVER_PHOTOS = [
-        'Singapore' => ['1 Singapore skyline.jpg', 'chensiyuan'],
-        'Rotterdam' => ['Rotterdam-Skyline (cropped).jpg', 'acediscovery'],
-        'Houston' => ['George R. Brown Convention Center - Houston, Texas - DSC01321.JPG', 'Daderot'],
-        'Manila' => ['Manila Bay, Sunset, Philippines.jpg', 'Vyacheslav Argenberg'],
-        'Cebu City' => ['Cebu City skyline, CCLEX Bridge west pylon drone view (Cebu City; 01-21-2025).jpg', 'Patrickroque01'],
-        'Davao City' => ['Davao City skyline 02.jpg', 'Teemu Väisänen'],
-        'Baguio City' => ['Baguio Convention Center, July 2025 (1).jpg', 'Ralff Nestor Nacor'],
+    private const CHAPTERS = [
+        ['North America Chapter', 'NA', 'United States, Canada & Mexico', 'Houston', 'George R. Brown Convention Center', 'Megan Brooks', 'Tyler Grant', 'Ashley Ramirez'],
+        ['South America Chapter', 'SA', 'Brazil, Argentina, Chile, Peru & Colombia', 'São Paulo', 'São Paulo Expo', 'Camila Ferreira', 'Bruno Costa', 'Valentina Rojas'],
+        ['Europe Chapter', 'EUR', 'European Union, United Kingdom & EFTA', 'Rotterdam', 'Rotterdam Ahoy', 'Sanne de Vries', 'Lukas Weber', 'Chloé Martin'],
+        ['North Asia Chapter', 'NAS', 'South Korea, Mongolia & the Russian Far East', 'Seoul', 'COEX Convention & Exhibition Center', 'Park Ji-woo', 'Kim Min-jun', 'Bat-Erdene Ganbold'],
+        ['West Asia Chapter', 'WAS', 'Gulf states, Türkiye & the Levant', 'Dubai', 'Dubai World Trade Centre', 'Layla Al Mansoori', 'Yusuf Kaya', 'Rania Haddad'],
+        ['East Asia Chapter', 'EAS', 'Japan, China, Hong Kong & Taiwan', 'Tokyo', 'Tokyo Big Sight', 'Haruka Yamamoto', 'Wang Jie', 'Lin Yu-ting'],
+        ['South Asia Chapter', 'SAS', 'India, Pakistan, Bangladesh, Sri Lanka & Nepal', 'Mumbai', 'Jio World Convention Centre', 'Ananya Iyer', 'Rohan Mehta', 'Ayesha Siddiqui'],
+        ['South East Asia Chapter', 'SEA', 'ASEAN member states, including the Philippines', 'Manila', 'SMX Convention Center Manila', 'Maria Santos', 'Paolo Villanueva', 'Nguyen Thi Lan'],
+    ];
+
+    /**
+     * Freely licensed Wikimedia Commons photos of each venue building, keyed by venue name.
+     *
+     * @var array<string, string>
+     */
+    private const VENUE_PHOTOS = [
+        'George R. Brown Convention Center' => 'Houston Convention Center Exterior 1.jpg',
+        'São Paulo Expo' => 'São Paulo Expo após a inauguração - 2016.jpg',
+        'Rotterdam Ahoy' => 'Rotterdam Ahoy (2022).jpg',
+        'COEX Convention & Exhibition Center' => 'Seoul-COEX.jpg',
+        'Dubai World Trade Centre' => 'Dubai World Trade Centre and skyline.jpg',
+        'Tokyo Big Sight' => 'Tokyo Big Sight exterior 2024-02-12.jpg',
+        'Jio World Convention Centre' => 'Jio world convention centre.jpg',
+        'SMX Convention Center Manila' => 'SMX Convention Center 12.jpg',
+        'Waterfront Cebu City Hotel' => 'WaterfrontCebuCity.JPG',
+        'Marco Polo Davao' => 'Marco Polo Davao (4623234674).jpg',
+        'Baguio Convention and Cultural Center' => 'Baguio Convention Center Interior, July 2025.jpg',
+    ];
+
+    /**
+     * Conference halls, for sessions held in a hall inside the venue.
+     *
+     * @var list<string>
+     */
+    private const HALL_PHOTOS = [
+        'Wikimania, centro de convenciones y exposiciones Suntec, Singapur, 2023-08-16, DD 07.jpg',
+        'Conference room XIX in the Palace of Nations.jpg',
+        'Lecture Theatre of the Hive Building.JPG',
+    ];
+
+    /**
+     * Meeting and training rooms, for workshops held in a room inside the venue.
+     *
+     * @var list<string>
+     */
+    private const ROOM_PHOTOS = [
+        'Bright conference room (Unsplash).jpg',
+        'Minimalist meeting room (Unsplash).jpg',
+        'White conference room (Unsplash).jpg',
+        'Conference room table (Unsplash).jpg',
     ];
 
     public function run(): void
@@ -44,17 +88,13 @@ class DatabaseSeeder extends Seeder
         $admin = $this->user('Amara Okafor', 'admin@gtavm.test', User::ROLE_ADMIN, 'Global Trade Association');
 
         $sets = [];
-        foreach ([
-            ['Asia-Pacific Chapter', 'APAC', 'Asia-Pacific', 'Singapore', 'Marina Bay Convention Centre'],
-            ['Europe Chapter', 'EUR', 'Europe, Middle East & Africa', 'Rotterdam', 'Maas Exhibition Halls'],
-            ['Americas Chapter', 'AMER', 'North & South America', 'Houston', 'Gulf Coast Trade Center'],
-            ['Philippines Chapter', 'PH', 'Philippines', 'Manila', 'SMX Convention Center Manila'],
-        ] as [$name, $code, $region, $city, $venue]) {
+        foreach (self::CHAPTERS as [$name, $code, $region, $city, $venue, $managerName, $gateName, $deskName]) {
             $chapter = Chapter::create(['name' => $name, 'code' => $code, 'region' => $region]);
             $slug = strtolower($code);
 
-            $this->user("{$code} Chapter Manager", "manager.{$slug}@gtavm.test", User::ROLE_MANAGER, 'Global Trade Association', $chapter->id);
-            $gate = $this->user("{$code} Gate Staff", "gate.{$slug}@gtavm.test", User::ROLE_GATE, 'Venue Operations', $chapter->id);
+            $this->user($managerName, "manager.{$slug}@gtavm.test", User::ROLE_MANAGER, 'Global Trade Association', $chapter->id, 'Event Organizer');
+            $gate = $this->user($gateName, "gate.{$slug}@gtavm.test", User::ROLE_GATE, $venue, $chapter->id, 'Gate Supervisor');
+            $this->user($deskName, "desk.{$slug}@gtavm.test", User::ROLE_GATE, $venue, $chapter->id, 'Registration Desk Officer');
 
             $sets[] = [$chapter, $city, $venue, $gate];
         }
@@ -83,7 +123,7 @@ class DatabaseSeeder extends Seeder
 
         // ---- Events -----------------------------------------------------
         foreach ($sets as [$chapter, $city, $venue, $gate]) {
-            $isApac = $chapter->code === 'APAC';
+            $isHome = $chapter->code === 'SEA'; // the demo attendee's own chapter
 
             // 1. A finished expo: produces check-in history and certificates.
             $pastStart = now()->subDays(40)->setTime(9, 0);
@@ -96,7 +136,7 @@ class DatabaseSeeder extends Seeder
                 'registration_closes_at' => $pastStart->copy()->subDays(2),
                 'capacity' => 40, 'ticket_price' => 180,
             ]);
-            $this->fill($past, $attendees, 22, 0.85, $gate, $isApac ? $demoAttendee : null, true, 2);
+            $this->fill($past, $attendees, 22, 0.85, $gate, $isHome ? $demoAttendee : null, true, 2);
             $past->speakers()->attach($speakers[0]->id, ['topic' => 'Opening keynote: resilient supply chains']);
 
             // 2. An upcoming expo with registration open, plus two workshops inside it.
@@ -110,7 +150,7 @@ class DatabaseSeeder extends Seeder
                 'registration_closes_at' => $expoStart->copy()->subDays(1),
                 'capacity' => 60, 'ticket_price' => 220,
             ]);
-            $this->fill($expo, $attendees, 18, 0, null, $isApac ? $demoAttendee : null, true, 3);
+            $this->fill($expo, $attendees, 18, 0, null, $isHome ? $demoAttendee : null, true, 3);
 
             $workshopA = $this->event($chapter, [
                 'parent_id' => $expo->id,
@@ -161,7 +201,7 @@ class DatabaseSeeder extends Seeder
                 'registration_closes_at' => now()->addHours(9),
                 'capacity' => 30, 'ticket_price' => 0,
             ]);
-            $this->fill($today, $attendees, 14, 0.3, $gate, $isApac ? $demoAttendee : null, false);
+            $this->fill($today, $attendees, 14, 0.3, $gate, $isHome ? $demoAttendee : null, false);
 
             // A sample private file attendees can download once registered.
             $path = "materials/{$expo->id}/exhibitor-guide.txt";
@@ -176,15 +216,15 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        [$philippines, , , $philippinesGate] = $sets[3];
-        $this->philippineRegions($philippines, $philippinesGate, $attendees, $speakers);
+        [$southEastAsia, , , $southEastAsiaGate] = $sets[7];
+        $this->philippineRegions($southEastAsia, $southEastAsiaGate, $attendees, $speakers);
 
         $this->pastYear($sets, $speakers);
         $this->coverPhotos();
     }
 
     /**
-     * Events of the Philippines Chapter outside Metro Manila: Cebu, Davao and Baguio.
+     * Events of the South East Asia Chapter in the Philippines outside Metro Manila: Cebu, Davao and Baguio.
      *
      * @param  Collection<int, User>  $attendees
      * @param  Collection<int, User>  $speakers
@@ -208,7 +248,7 @@ class DatabaseSeeder extends Seeder
         $davao = $this->event($chapter, [
             'title' => 'Davao Agri-Trade Expo',
             'type' => 'expo',
-            'venue' => 'SMX Convention Center Davao', 'city' => 'Davao City',
+            'venue' => 'Marco Polo Davao', 'city' => 'Davao City',
             'starts_at' => $davaoStart, 'ends_at' => $davaoStart->copy()->addDays(2)->setTime(17, 0),
             'registration_opens_at' => now()->subDays(5),
             'registration_closes_at' => $davaoStart->copy()->subDays(1),
@@ -232,16 +272,23 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Real venue and city photos from Wikimedia Commons, one per city, downloaded once and kept in
-     * storage/app/private/event-covers/demo so later reseeds need no internet. Without internet the
-     * events keep the drawn gold covers. Each photo's licence is on its Wikimedia Commons page.
+     * Real photos of where each event takes place, from Wikimedia Commons: the venue building for events in
+     * the main venue, a conference hall for sessions in a hall, and a meeting room for workshops in a room.
+     * Each photo is downloaded once and kept in storage/app/private/event-covers/demo, so later reseeds need
+     * no internet. Without internet the events keep the drawn gold covers.
      */
     private function coverPhotos(): void
     {
         $offline = false;
 
-        foreach (self::COVER_PHOTOS as $city => [$fileName, $photographer]) {
-            $path = 'event-covers/demo/'.Str::slug($city).'.jpg';
+        foreach (Event::orderBy('id')->get(['id', 'venue', 'type']) as $event) {
+            $fileName = $this->coverPhotoFor($event);
+
+            if ($fileName === null) {
+                continue;
+            }
+
+            $path = 'event-covers/demo/'.Str::slug(pathinfo($fileName, PATHINFO_FILENAME)).'.jpg';
 
             if (! Storage::disk('local')->exists($path)) {
                 $image = $offline ? null : $this->downloadPhoto($fileName, $offline);
@@ -252,15 +299,24 @@ class DatabaseSeeder extends Seeder
                 Storage::disk('local')->put($path, $image);
             }
 
-            Event::where('city', $city)->update([
-                'cover_path' => $path,
-                'cover_credit' => 'Photo: '.$photographer.' / Wikimedia Commons ('.$fileName.')',
-            ]);
+            $event->forceFill(['cover_path' => $path, 'cover_credit' => null])->saveQuietly();
         }
 
         if ($offline) {
             $this->command?->warn('Could not download the venue photos (no internet, or HTTPS blocked), so events use the drawn covers. Run the seeder again online to add them.');
         }
+    }
+
+    /** The Wikimedia Commons file that shows where this event takes place, or null when none fits. */
+    private function coverPhotoFor(Event $event): ?string
+    {
+        if (isset(self::VENUE_PHOTOS[$event->venue])) {
+            return self::VENUE_PHOTOS[$event->venue];
+        }
+
+        $photos = str_contains($event->venue, ', Room') ? self::ROOM_PHOTOS : self::HALL_PHOTOS;
+
+        return $photos[$event->id % count($photos)];
     }
 
     /** Fetches a 1280-pixel-wide copy of a Wikimedia Commons file. Returns null if it is unavailable. */
@@ -365,7 +421,7 @@ class DatabaseSeeder extends Seeder
             ->create();
     }
 
-    private function user(string $name, string $email, string $role, ?string $company = null, ?int $chapterId = null): User
+    private function user(string $name, string $email, string $role, ?string $company = null, ?int $chapterId = null, ?string $jobTitle = null): User
     {
         return User::create([
             'name' => $name,
@@ -373,6 +429,7 @@ class DatabaseSeeder extends Seeder
             'password' => 'password', // hashed by the model cast
             'role' => $role,
             'company' => $company,
+            'job_title' => $jobTitle,
             'chapter_id' => $chapterId,
         ]);
     }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Chapter;
 use App\Models\Event;
 use App\Models\Registration;
 use Database\Seeders\DatabaseSeeder;
@@ -41,7 +42,27 @@ class DatabaseSeederTest extends TestCase
             ->select('user_id', 'event_id')->groupBy('user_id', 'event_id')->havingRaw('count(*) > 1')->get()->count());
     }
 
-    public function test_the_seeder_adds_one_venue_photo_per_city_when_online(): void
+    public function test_the_seeder_creates_the_eight_regional_chapters(): void
+    {
+        Storage::fake('local');
+        Http::fake(fn () => throw new ConnectionException('No internet in tests.'));
+
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertSame([
+            'North America Chapter', 'South America Chapter', 'Europe Chapter', 'North Asia Chapter',
+            'West Asia Chapter', 'East Asia Chapter', 'South Asia Chapter', 'South East Asia Chapter',
+        ], Chapter::orderBy('id')->pluck('name')->all());
+
+        // Every chapter has an organizer and staff, and hosts events.
+        Chapter::withCount(['managers', 'gateStaff', 'events'])->get()->each(function (Chapter $chapter) {
+            $this->assertSame(1, $chapter->managers_count, $chapter->name);
+            $this->assertSame(2, $chapter->gate_staff_count, $chapter->name);
+            $this->assertGreaterThan(0, $chapter->events_count, $chapter->name);
+        });
+    }
+
+    public function test_the_seeder_gives_every_event_a_photo_of_its_venue_when_online(): void
     {
         Storage::fake('local');
         $photo = file_get_contents(base_path('tests/Fixtures/venue.jpg'));
@@ -49,24 +70,29 @@ class DatabaseSeederTest extends TestCase
 
         $this->seed(DatabaseSeeder::class);
 
-        foreach (['Singapore', 'Rotterdam', 'Houston', 'Manila', 'Cebu City', 'Davao City', 'Baguio City'] as $city) {
-            $events = Event::where('city', $city)->get();
-            $this->assertNotEmpty($events, $city);
-            $this->assertTrue($events->every(fn (Event $e) => $e->cover_path && str_contains($e->cover_credit, 'Wikimedia Commons')), $city);
-            Storage::disk('local')->assertExists($events->first()->cover_path);
-        }
-        Http::assertSentCount(7);
+        $this->assertSame(0, Event::whereNull('cover_path')->count());
+        $this->assertSame(0, Event::whereNotNull('cover_credit')->count(), 'no photo credits are shown');
+
+        // The expo in the main venue shows the venue building; workshops in a room show a meeting room.
+        $expo = Event::where('title', 'Houston Supply Chain Expo')->firstOrFail();
+        $this->assertSame('event-covers/demo/houston-convention-center-exterior-1.jpg', $expo->cover_path);
+        $this->assertStringContainsString('unsplash', Event::where('venue', 'like', '%, Room %')->firstOrFail()->cover_path);
+
+        Event::pluck('cover_path')->unique()->each(fn (string $path) => Storage::disk('local')->assertExists($path));
+
+        // Each photo is downloaded only once: 11 venues, 3 halls and 4 meeting rooms.
+        Http::assertSentCount(18);
         Http::assertSent(fn ($request) => str_contains($request->url(), 'Special:FilePath') && $request->hasHeader('User-Agent'));
     }
 
-    public function test_the_philippines_chapter_has_events_across_the_country(): void
+    public function test_the_south_east_asia_chapter_has_events_across_the_philippines(): void
     {
         Storage::fake('local');
         Http::fake(fn () => throw new ConnectionException('No internet in tests.'));
 
         $this->seed(DatabaseSeeder::class);
 
-        $cities = Event::whereHas('chapter', fn ($q) => $q->where('code', 'PH'))->pluck('city')->unique()->values()->all();
+        $cities = Event::whereHas('chapter', fn ($q) => $q->where('code', 'SEA'))->pluck('city')->unique()->values()->all();
         $this->assertEqualsCanonicalizing(['Manila', 'Cebu City', 'Davao City', 'Baguio City'], $cities);
         $this->assertSame(0, Event::whereNotNull('cover_path')->count(), 'offline seeding falls back to drawn covers');
     }

@@ -53,7 +53,7 @@ class EventCoverTest extends TestCase
         Storage::disk('local')->assertExists($event->cover_path);
 
         $this->get(route('events.index'))->assertSee($event->coverUrl(), false);
-        $this->get(route('events.show', $event))->assertSee($event->coverUrl(), false)->assertSee('Photo: Jane Cruz');
+        $this->get(route('events.show', $event))->assertSee($event->coverUrl(), false)->assertDontSee('Photo: Jane Cruz');
         $this->get($event->coverUrl())->assertOk()->assertHeader('Content-Type', 'image/jpeg');
     }
 

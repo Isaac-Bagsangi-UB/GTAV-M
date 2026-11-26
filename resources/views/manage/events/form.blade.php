@@ -116,11 +116,6 @@
                         <div class="hint">JPG, PNG or WebP, landscape, at least 800 × 450 pixels, up to 4 MB. Shown on the event card and as the banner of the event page. Without a photo, a gold drawing of the venue type is used.</div>
                         @error('cover') <div class="error">{{ $message }}</div> @enderror
                     </div>
-                    <div class="field">
-                        <label for="cover_credit">Photo credit (optional)</label>
-                        <input id="cover_credit" name="cover_credit" value="{{ old('cover_credit', $event->cover_credit) }}" maxlength="255" placeholder="e.g. Photo: Jane Cruz, CC BY 4.0">
-                        @error('cover_credit') <div class="error">{{ $message }}</div> @enderror
-                    </div>
                     @if ($event->cover_path)
                         <label class="check"><input type="checkbox" name="remove_cover" value="1"> Remove the current photo</label>
                     @endif

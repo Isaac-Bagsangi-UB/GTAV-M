@@ -49,7 +49,8 @@ class EventBrowseController extends Controller
         );
 
         $event->load([
-            'chapter',
+            'chapter.managers',
+            'chapter.gateStaff',
             'parent',
             'speakers',
             'children' => fn ($q) => $q->where('status', 'published')->withCount('confirmedRegistrations'),

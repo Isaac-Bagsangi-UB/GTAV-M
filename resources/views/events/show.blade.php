@@ -3,6 +3,10 @@
 @section('title', $event->title)
 @section('description', Str::limit($event->typeLabel() . ' in ' . ($event->city ?: $event->venue) . ', ' . $event->starts_at->format('F j, Y') . '. ' . ($event->description ?? ''), 155))
 
+@push('head')
+    <style>.event-team h3 { margin: 22px 0 0; font-size: 1.05rem; color: var(--gold-soft); text-transform: uppercase; letter-spacing: .12em; font-family: var(--body); }</style>
+@endpush
+
 @if ($event->status === 'published')
     @push('head')
         <script type="application/ld+json">{!! $structuredData !!}</script>
@@ -40,9 +44,6 @@
 
     <figure class="event-hero">
         @include('partials.event-cover', ['event' => $event, 'variant' => 'hero', 'eager' => true])
-        @if ($event->cover_path && $event->cover_credit)
-            <figcaption class="muted small">{{ $event->cover_credit }}</figcaption>
-        @endif
     </figure>
 
     <div class="split">
@@ -59,22 +60,34 @@
                 </dl>
             </div>
 
-            @if ($event->speakers->isNotEmpty())
-                <div class="card">
-                    <h2>Speakers</h2>
-                    <ul class="plain">
-                        @foreach ($event->speakers as $speaker)
-                            <li>
-                                <div>
-                                    <strong>{{ $speaker->name }}</strong>
-                                    <div class="muted small">{{ $speaker->company }}</div>
-                                </div>
-                                <span class="muted small">{{ $speaker->pivot->topic }}</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
+            @php
+                $team = [
+                    'Organizers' => $event->chapter->managers->map(fn ($person) => [$person->name, $person->job_title ?: $person->roleLabel(), $event->chapter->name]),
+                    'Speakers' => $event->speakers->map(fn ($person) => [$person->name, $person->company, $person->pivot->topic]),
+                    'Staff' => $event->chapter->gateStaff->map(fn ($person) => [$person->name, $person->job_title ?: $person->roleLabel(), $person->company]),
+                ];
+            @endphp
+            <div class="card event-team">
+                <h2>Event team</h2>
+                @foreach ($team as $heading => $people)
+                    <h3>{{ $heading }}</h3>
+                    @if ($people->isEmpty())
+                        <p class="muted small">To be announced.</p>
+                    @else
+                        <ul class="plain">
+                            @foreach ($people as [$name, $role, $detail])
+                                <li>
+                                    <div>
+                                        <strong>{{ $name }}</strong>
+                                        <div class="muted small">{{ $role }}</div>
+                                    </div>
+                                    <span class="muted small">{{ $detail }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                @endforeach
+            </div>
 
             @if ($event->children->isNotEmpty())
                 <h2>Sessions inside this event</h2>
