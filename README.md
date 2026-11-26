@@ -77,13 +77,13 @@ php artisan serve
 Open http://127.0.0.1:8000. No `npm` build is needed: the interface uses the plain stylesheet and scripts in `public/`.
 
 > Run `php artisan migrate:fresh --seed` again right before a demo. The demo data is dated relative to today
-> and includes one event happening today, so the scanner always has something to scan. Seeding about 3,000 records
-> takes 20 to 40 seconds.
+> and includes one event happening today, so the scanner always has something to scan. Seeding over 5,000 records
+> takes about a minute.
 >
-> **Venue photos:** the first time you seed with internet, the seeder downloads one free-licensed photo per city
-> from Wikimedia Commons (Singapore, Rotterdam, Houston, Manila, Cebu, Davao, Baguio) into
-> `storage/app/private/event-covers/demo`. Later reseeds reuse them, so they work offline. Without internet the
-> events show drawn gold covers instead. The photographer is credited under each photo on the event page.
+> **Venue photos:** the first time you seed with internet, the seeder downloads 18 free-licensed photos from
+> Wikimedia Commons into `storage/app/private/event-covers/demo`: the building of each chapter's venue, plus
+> conference halls and meeting rooms for sessions held inside a venue. Later reseeds reuse them, so they work
+> offline. Without internet the events show drawn gold covers instead.
 
 **Run the automated tests:**
 
@@ -98,19 +98,20 @@ Password for all of them: `password`
 | Role | Email |
 | --- | --- |
 | Administrator | admin@gtavm.test |
-| Chapter manager (Asia-Pacific) | manager.apac@gtavm.test |
-| Chapter manager (Europe / Americas) | manager.eur@gtavm.test / manager.amer@gtavm.test |
-| Chapter manager (Philippines) | manager.ph@gtavm.test |
+| Chapter manager (South East Asia) | manager.sea@gtavm.test |
+| Chapter managers (other chapters) | manager.na / manager.sa / manager.eur / manager.nas / manager.was / manager.eas / manager.sas @gtavm.test |
 | Attendee | attendee@gtavm.test |
 | Speaker | speaker@gtavm.test |
-| Gate staff (Asia-Pacific) | gate.apac@gtavm.test |
-| Gate staff (Philippines) | gate.ph@gtavm.test (scans "Manila Members Briefing", today) |
+| Gate staff (South East Asia) | gate.sea@gtavm.test (scans "Manila Members Briefing", today) |
+| Registration desk (South East Asia) | desk.sea@gtavm.test |
+
+Chapters: North America (Houston), South America (São Paulo), Europe (Rotterdam), North Asia (Seoul), West Asia (Dubai), East Asia (Tokyo), South Asia (Mumbai) and South East Asia (Manila, plus Cebu, Davao and Baguio). Every event page lists its organizers, speakers and staff.
 
 ## A demo that touches every requirement
 
-1. **Attendee:** log in, open *My passes*, download the entry pass for "Singapore Members Briefing" (today) and the certificate for the past expo. Browse events: the Cold Chain workshop is **sold out** (capacity rule) and the Technical Summit **opens soon** (registration window rule).
-2. **Gate staff** (phone or second browser): pick "Singapore Members Briefing", scan the QR on the pass or type its ticket code. The first scan says **LET IN**; scanning it again says **ALREADY INSIDE** with the time they entered; an unknown or cancelled ticket says **DO NOT LET IN** with the reason. *Gate activity* keeps one line per ticket and counts repeat scans. Type part of a name to find someone whose QR will not scan.
-3. **Chapter manager:** sees only Asia-Pacific figures; opens an event, exports the CSV, uploads a material, assigns a speaker, generates the three reports.
+1. **Attendee:** log in, open *My passes*, download the entry pass for "Manila Members Briefing" (today) and the certificate for the past expo. Browse events: the Cold Chain workshop is **sold out** (capacity rule) and the Technical Summit **opens soon** (registration window rule).
+2. **Gate staff** (phone or second browser): pick "Manila Members Briefing", scan the QR on the pass or type its ticket code. The first scan says **LET IN**; scanning it again says **ALREADY INSIDE** with the time they entered; an unknown or cancelled ticket says **DO NOT LET IN** with the reason. *Gate activity* keeps one line per ticket and counts repeat scans. Type part of a name to find someone whose QR will not scan.
+3. **Chapter manager:** sees only South East Asia figures; opens an event, exports the CSV, uploads a material, assigns a speaker, generates the three reports.
 4. **Administrator:** all chapters, the participation matrix, users and roles, the audit log of everything above.
 5. **Speaker:** sees assigned sessions, uploads slides, downloads the speaker certificate for the past expo.
 6. **Forgotten password:** on the log in page, request a reset link. With `MAIL_MAILER=log` the email is written to `storage/logs/laravel.log`; open the link from there.
@@ -123,7 +124,7 @@ Password for all of them: `password`
 | 1 | Multi-role authorization | 5 roles. `EnsureRole` middleware guards each area in `routes/web.php` and `routes/api.php`; Gates `manage-event`, `scan-event`, `upload-materials`, `access-materials` in `AppServiceProvider` guard actions per chapter and per event; `@can` hides buttons in the views. Tests: `RoleAccessTest`, `GateCheckInTest`. |
 | 2 | Authentication | Register (attendee or speaker), log in, log out, forgotten password, session regenerated on log in and invalidated on log out (`Auth/` controllers). Tests: `AuthenticationTest`, `PasswordResetTest`. |
 | 3 | Advanced relationships | Many-to-many: `User::registeredEvents()` / `Event::attendees()` through the `registrations` pivot, and `User::sessions()` / `Event::speakers()` through `event_speaker`. Has-many-through: `Chapter::registrations()` (chapters → events → registrations). Test: `DatabaseRelationshipsTest`. |
-| 4 | 1,000+ seeded records | `DatabaseSeeder` creates about 3,000 records across 4 chapters, including the Philippines (Manila, Cebu, Davao, Baguio); the year of chapter history is built with factories and relationship states (`for()`, `sequence()`, `registeredDuring()`, `CheckInFactory::admits()`). Test: `DatabaseSeederTest`. |
+| 4 | 1,000+ seeded records | `DatabaseSeeder` creates over 5,000 records across 8 regional chapters, including events across the Philippines (Manila, Cebu, Davao, Baguio); the year of chapter history is built with factories and relationship states (`for()`, `sequence()`, `registeredDuring()`, `CheckInFactory::admits()`). Test: `DatabaseSeederTest`. |
 | 5 | File upload and download | Workshop materials: validated by type and size (20 MB), stored with the `Storage` facade on the private disk, downloaded only by registered attendees, speakers and staff (`MaterialController`). Event cover photos: validated as images (JPG, PNG, WebP, 4 MB, at least 800 × 450), stored privately and streamed by `EventBrowseController@cover`. Tests: `MaterialFilesTest`, `EventCoverTest`. |
 | 6 | Token API | `routes/api.php`, `/api/v1`, Sanctum bearer tokens, `EventResource` and `RegistrationResource`. Tests: `ApiEndpointsTest`, `GateCheckInTest`. Reference: `API.md`. |
 | 7 | Unit and feature tests | `tests/Unit` (capacity and window rules, cancellation and certificate rules, report totals, file size labels, ticket tokens) and `tests/Feature` (routes, authorization, uploads, API structure, reports, seeding). |
